@@ -96,6 +96,8 @@
     mission: null,
     wishes: [],
     match: { bestEasy: null, bestHard: null },
+    pet: { happy: 70, sparkle: 55, energy: 70, level: 1 },
+    dress: { bg: 0 },
   });
 
   function saveState(){ store.set("uw_state", STATE); }
@@ -134,6 +136,8 @@
         const t = {
           home:"Welcome home 🦄",
           gallery:"Unicorn Gallery",
+          dressup:"Unicorn Dress‑Up",
+          pet:"Unicorn Pet",
           match:"Match Game",
           runner:"Rainbow Runner",
           color:"Color Magic",
@@ -201,11 +205,42 @@
       "🌈 Magic Spell: Draw a rainbow with your finger!"
     ];
     const box = $("#homeTip");
-    if (box) {
-      const daily = pick(spells);
-      box.textContent = daily;
-      $("#readMission")?.addEventListener("click", () => speak(daily));
-    }
+    if (box) box.textContent = pick(spells);
+
+    setupMissions();
+  }
+
+  function setupMissions(){
+    const missions = [
+      { t:"🖼️ Find 3 unicorn pictures", d:"Open the Gallery and tap 3 unicorns!" },
+      { t:"🧠 Win Match Game", d:"Try Easy mode and find all the pairs." },
+      { t:"🌈 Grab 5 stars", d:"Play Rainbow Runner and collect 5 stars." },
+      { t:"🎨 Paint a rainbow", d:"Pick colors and draw a rainbow in Color Magic." },
+      { t:"👗 Make a fancy outfit", d:"Go to Dress‑Up and drag 3 accessories." },
+      { t:"🐾 Make your unicorn happy", d:"Feed + Brush + Play your pet unicorn." },
+      { t:"💖 Add a wish", d:"Go to Wish Jar and add one wish." },
+    ];
+
+    const box = $("#missionBox");
+    const setMission = (m) => {
+      STATE.mission = m;
+      if (box) box.innerHTML = `${m.t}<span class="small">${m.d}</span>`;
+      saveState();
+    };
+
+    if (STATE.mission) setMission(STATE.mission);
+    else setMission(pick(missions));
+
+    $("#newMission")?.addEventListener("click", () => {
+      beep("tap");
+      setMission(pick(missions));
+      speak("New mission! " + STATE.mission.t);
+    });
+
+    $("#readMission")?.addEventListener("click", () => {
+      if (!STATE.mission) return;
+      speak(STATE.mission.t + ". " + STATE.mission.d);
+    });
   }
 
   /* =========================================================
@@ -250,6 +285,249 @@
     if (!modal) return;
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden","true");
+  }
+
+  /* =========================================================
+     DRESS-UP (drag accessories)
+     ========================================================= */
+  function setupDressup(){
+    const stage = $("#dressStage");
+    const base = $("#dressBase");
+    const bgSwatches = $("#bgSwatches");
+    const accSwatches = $("#accSwatches");
+    if (!stage || !base || !bgSwatches || !accSwatches) return;
+
+    // Use one of the unicorn pics as the base
+    base.src = (IMAGES[0] && IMAGES[0].src) ? IMAGES[0].src : "";
+
+    const bgs = [
+      { name:"Candy", css:"radial-gradient(900px 520px at 30% 20%, rgba(255,79,216,.25), transparent 62%), radial-gradient(900px 520px at 70% 80%, rgba(96,165,250,.18), transparent 62%), rgba(0,0,0,.18)" },
+      { name:"Rainbow", css:"linear-gradient(135deg, rgba(255,79,216,.22), rgba(96,165,250,.18), rgba(52,211,153,.16))" },
+      { name:"Princess", css:"radial-gradient(circle at 30% 30%, rgba(255,255,255,.18) 0 180px, transparent 260px), radial-gradient(circle at 70% 70%, rgba(255,79,216,.14) 0 220px, transparent 320px), rgba(0,0,0,.18)" },
+      { name:"Night", css:"radial-gradient(circle at 30% 25%, rgba(167,139,250,.20) 0 180px, transparent 280px), radial-gradient(circle at 70% 70%, rgba(96,165,250,.14) 0 240px, transparent 340px), rgba(0,0,0,.22)" },
+    ];
+
+    const accessories = ["👑","🎀","💎","🌸","🕶️","🪄","✨","💖","⭐","🌈"];
+
+    const setBg = (i) => {
+      STATE.dress.bg = i;
+      stage.style.background = bgs[i].css;
+      saveState();
+    };
+
+    // Render swatches once
+    if (!bgSwatches.childElementCount){
+      bgs.forEach((b, i) => {
+        const s = document.createElement("button");
+        s.className = "swatch";
+        s.style.setProperty("--sw", b.css);
+        s.title = b.name;
+        s.addEventListener("click", () => { beep("tap"); setBg(i); });
+        bgSwatches.appendChild(s);
+      });
+    }
+
+    if (!accSwatches.childElementCount){
+      accessories.forEach((emo) => {
+        const s = document.createElement("button");
+        s.className = "swatch accSwatch";
+        s.dataset.emoji = emo;
+        s.title = "Drag: " + emo;
+        s.addEventListener("click", () => {
+          beep("tap");
+          spawnAccessory(emo);
+        });
+        accSwatches.appendChild(s);
+      });
+    }
+
+    function spawnAccessory(emo){
+      const el = document.createElement("div");
+      el.className = "dressItem";
+      el.textContent = emo;
+      // Start near the center
+      const r = stage.getBoundingClientRect();
+      const x = r.width * 0.5 + (Math.random()*40 - 20);
+      const y = r.height * 0.35 + (Math.random()*40 - 20);
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      stage.appendChild(el);
+      makeDraggable(el, stage);
+      el.addEventListener("dblclick", () => { beep("bad"); el.remove(); });
+      addStars(1, "Dress-up magic! ⭐");
+      // Badge for adding 3 items
+      if ($$("#dressStage .dressItem").length >= 3){
+        unlockBadge("dress_3", "Style Star", "Added 3 accessories!", "👗");
+      }
+    }
+
+    $("#dressRandom")?.addEventListener("click", () => {
+      beep("tap");
+      setBg((Math.random()*bgs.length)|0);
+      // Clear and add a few
+      $$("#dressStage .dressItem").forEach(n => n.remove());
+      const count = 3 + ((Math.random()*3)|0);
+      for (let i=0;i<count;i++) spawnAccessory(pick(accessories));
+      speak("Surprise unicorn outfit!");
+    });
+
+    $("#dressClear")?.addEventListener("click", () => {
+      beep("bad");
+      $$("#dressStage .dressItem").forEach(n => n.remove());
+      speak("All clean! Pick new accessories.");
+    });
+
+    $("#dressSnap")?.addEventListener("click", () => {
+      sparkleBurst(18);
+      addStars(5, "Sparkle photo! ⭐⭐⭐⭐⭐");
+      unlockBadge("dress_photo", "Sparkle Photo", "Took a sparkle photo!", "📸");
+      speak("Sparkle photo! Amazing!");
+    });
+
+    $("#readDress")?.addEventListener("click", () => speak(
+      "Dress up! Tap an accessory to add it, then drag it onto the unicorn. Double click to remove."
+    ));
+
+    // Restore saved background
+    setBg(Math.min(bgs.length-1, Math.max(0, STATE.dress.bg|0)));
+  }
+
+  function makeDraggable(el, boundsEl){
+    let dragging=false, ox=0, oy=0;
+    const onDown = (e) => {
+      dragging = true;
+      const p = getPoint(e);
+      const r = el.getBoundingClientRect();
+      ox = p.x - r.left;
+      oy = p.y - r.top;
+      el.setPointerCapture?.(e.pointerId);
+      e.preventDefault?.();
+    };
+    const onMove = (e) => {
+      if (!dragging) return;
+      const p = getPoint(e);
+      const br = boundsEl.getBoundingClientRect();
+      let x = p.x - br.left - ox;
+      let y = p.y - br.top - oy;
+      x = Math.max(0, Math.min(br.width - 30, x));
+      y = Math.max(0, Math.min(br.height - 30, y));
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      e.preventDefault?.();
+    };
+    const onUp = () => { dragging=false; };
+    el.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+
+    function getPoint(e){
+      return { x: e.clientX ?? (e.touches && e.touches[0].clientX), y: e.clientY ?? (e.touches && e.touches[0].clientY) };
+    }
+  }
+
+  /* =========================================================
+     UNICORN PET
+     ========================================================= */
+  let petTimer = null;
+  function setupPet(){
+    const base = $("#petBase");
+    const msg = $("#petMsg");
+    const float = $("#petFloat");
+    if (!base || !msg || !float) return;
+
+    base.src = (IMAGES[1] && IMAGES[1].src) ? IMAGES[1].src : (IMAGES[0]?.src || "");
+
+    const clamp = (v) => Math.max(0, Math.min(100, v));
+    const paint = () => {
+      $("#petHappy").style.width = clamp(STATE.pet.happy) + "%";
+      $("#petSparkle").style.width = clamp(STATE.pet.sparkle) + "%";
+      $("#petEnergy").style.width = clamp(STATE.pet.energy) + "%";
+      saveState();
+    };
+
+    const pop = (emoji, text) => {
+      float.textContent = emoji;
+      float.style.opacity = 1;
+      float.animate([
+        { transform:"translateX(-50%) translateY(0)", opacity:1 },
+        { transform:"translateX(-50%) translateY(-40px)", opacity:0 }
+      ], { duration: 900, easing:"cubic-bezier(.2,.8,.2,1)" });
+      setTimeout(() => float.style.opacity = 0, 950);
+      msg.textContent = text;
+    };
+
+    const act = (dh, ds, de, emoji, text) => {
+      beep("tap");
+      STATE.pet.happy = clamp((STATE.pet.happy|0) + dh);
+      STATE.pet.sparkle = clamp((STATE.pet.sparkle|0) + ds);
+      STATE.pet.energy = clamp((STATE.pet.energy|0) + de);
+      addStars(2, "Pet care! ⭐⭐");
+      pop(emoji, text);
+      paint();
+      checkPetLevel();
+    };
+
+    function checkPetLevel(){
+      const avg = (STATE.pet.happy + STATE.pet.sparkle + STATE.pet.energy)/3;
+      const target = 60 + (STATE.pet.level-1)*8;
+      if (avg >= target && STATE.pet.level < 10){
+        STATE.pet.level++;
+        unlockBadge("pet_level_" + STATE.pet.level, "Pet Level " + STATE.pet.level, "Your unicorn leveled up!", "🐾");
+        addStars(8, "Level up! ⭐⭐⭐⭐⭐⭐⭐⭐");
+        speak("Level up! Your unicorn is super happy!");
+      }
+      if (avg >= 85){
+        unlockBadge("pet_love", "Best Friends", "Kept your unicorn super happy!", "💞");
+      }
+      saveState();
+    }
+
+    $("#petFeed")?.addEventListener("click", () => act(10, 6, 6, "🍓", "Nom nom! So yummy!"));
+    $("#petBrush")?.addEventListener("click", () => act(8, 12, -2, "✨", "Brush brush! Extra sparkly!"));
+    $("#petBath")?.addEventListener("click", () => act(6, 10, -4, "🫧", "Bubble bath! So clean!"));
+    $("#petPlay")?.addEventListener("click", () => act(12, 4, -8, "🎀", "Yay! Playing together!"));
+    $("#petTalk")?.addEventListener("click", () => { beep("tap"); speak(pick([
+      "I love rainbows!",
+      "Can we be best friends?",
+      "Your sparkle is my favorite!",
+      "Let\'s go to Unicorn Land!"
+    ])); pop("💬","Your unicorn says something sweet 💖"); });
+    $("#petSleep")?.addEventListener("click", () => act(-2, -2, 18, "😴", "Zzz... feeling rested!"));
+    $("#petReset")?.addEventListener("click", () => { beep("bad"); STATE.pet = { happy:70, sparkle:55, energy:70, level:1 }; paint(); msg.textContent = "All reset!"; });
+    $("#readPet")?.addEventListener("click", () => speak("Unicorn Pet! Feed, brush, bubble bath, and play to fill the hearts."));
+
+    if (!petTimer){
+      petTimer = setInterval(() => {
+        // gentle decay
+        STATE.pet.happy = clamp((STATE.pet.happy|0) - 1);
+        STATE.pet.sparkle = clamp((STATE.pet.sparkle|0) - 1);
+        STATE.pet.energy = clamp((STATE.pet.energy|0) - 1);
+        paint();
+      }, 22000);
+    }
+
+    paint();
+  }
+
+  function sparkleBurst(n=14){
+    for (let i=0;i<n;i++){
+      const s = document.createElement("div");
+      s.textContent = pick(["✨","⭐","💖","🌈"]);
+      s.style.position = "fixed";
+      s.style.left = (window.innerWidth*0.3 + Math.random()*window.innerWidth*0.4) + "px";
+      s.style.top = (window.innerHeight*0.3 + Math.random()*window.innerHeight*0.3) + "px";
+      s.style.fontSize = (20 + Math.random()*18) + "px";
+      s.style.zIndex = "999";
+      s.style.pointerEvents = "none";
+      document.body.appendChild(s);
+      const dx = (Math.random()*260 - 130);
+      const dy = -(80 + Math.random()*220);
+      s.animate([
+        { transform:`translate(0,0)`, opacity:1 },
+        { transform:`translate(${dx}px,${dy}px)`, opacity:0 }
+      ], { duration: 900 + Math.random()*500, easing:"cubic-bezier(.2,.8,.2,1)" });
+      setTimeout(() => s.remove(), 1600);
+    }
   }
 
   /* =========================================================
@@ -399,12 +677,19 @@
   let uY=0, vy=0, jumping=false;
   let speed=7.2;
   let cloudX=820, spikeX=1100, starX=640, star2X=980;
+  let powerX=1500, powerType="shield", shield=0, magnetUntil=0;
   let score=0, collected=0, oops=0;
 
   function setupRunner(){
     $("#runnerStart")?.addEventListener("click", runnerStart);
     $("#runnerReset")?.addEventListener("click", runnerReset);
     $("#runnerJump")?.addEventListener("click", runnerJump);
+    $("#readRunner")?.addEventListener("click", () => speak(
+      "Rainbow Runner! Press start, then jump over clouds. Grab stars. Collect a bubble shield or star magnet power up."
+    ));
+
+    // make sure visuals are set even before pressing start
+    runnerReset();
 
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") runnerJump();
@@ -415,7 +700,8 @@
     runnerStop();
     uY=0; vy=0; jumping=false;
     speed=7.2;
-    cloudX=820; spikeX=1100; starX=640; star2X=980;
+    cloudX=900; spikeX=1300; starX=780; star2X=1180;
+    powerX=1600; powerType = "shield"; shield=0; magnetUntil=0;
     score=0; collected=0; oops=0;
     $("#runnerScore").textContent = "0";
     $("#runnerStars").textContent = "0";
@@ -456,56 +742,108 @@
     spikeX -= speed;
     starX -= speed;
     star2X -= speed;
+    powerX -= speed;
 
-    // ramp difficulty slowly
-    score += 0.02;
-    speed = 7.2 + Math.min(4.8, score/18);
+    // ramp difficulty slowly (gentler)
+    score += 0.018;
+    speed = 7.0 + Math.min(3.6, score/22);
 
-    if (cloudX < -80) cloudX = 820 + Math.random()*240;
-    if (spikeX < -80) spikeX = 980 + Math.random()*360;
-    if (starX < -80) starX = 820 + Math.random()*380;
-    if (star2X < -80) star2X = 980 + Math.random()*420;
+    if (cloudX < -80) cloudX = 880 + Math.random()*320;
+    if (spikeX < -80) spikeX = 1180 + Math.random()*440;
+
+    // keep stars away from obstacles so it feels fair
+    if (starX < -80) starX = safeStarX(900, 520);
+    if (star2X < -80) star2X = safeStarX(1100, 560);
+
+    // power-up (shield 🫧 or magnet 🧲)
+    if (powerX < -80){
+      powerX = 1500 + Math.random()*650;
+      powerType = Math.random() < 0.55 ? "shield" : "magnet";
+    }
 
     $("#runnerScore").textContent = String(score|0);
     setRunnerPositions();
 
-    // collision (cloud + spike)
+    // collision (cloud + spike) — shield blocks one bonk
     const uX=68, uW=48, uH=48;
     const uYpx = 120 + uY;
 
     // cloud at bottom
     if (rectHit(uX,uYpx,uW,uH, cloudX,120,60,44) && uY < 8){
-      oops++;
-      $("#runnerOops").textContent = String(oops);
-      $("#runnerMsg").textContent = "Oops! Jump earlier 😊";
-      beep("bad");
-      cloudX -= 60;
+      if (shield > 0){
+        shield--;
+        beep("win");
+        $("#runnerMsg").textContent = "🫧 Shield saved you!";
+        cloudX -= 120;
+      } else {
+        oops++;
+        $("#runnerOops").textContent = String(oops);
+        $("#runnerMsg").textContent = "Oops! Jump earlier 😊";
+        beep("bad");
+        cloudX -= 80;
+      }
     }
 
     // spike (remixed obstacle)
     if (rectHit(uX,uYpx,uW,uH, spikeX,120,44,44) && uY < 8){
-      oops++;
-      $("#runnerOops").textContent = String(oops);
-      $("#runnerMsg").textContent = "Boop! You hit a rainbow bump 🌈";
-      beep("bad");
-      spikeX -= 80;
+      if (shield > 0){
+        shield--;
+        beep("win");
+        $("#runnerMsg").textContent = "🫧 Shield saved you!";
+        spikeX -= 140;
+      } else {
+        oops++;
+        $("#runnerOops").textContent = String(oops);
+        $("#runnerMsg").textContent = "Boop! You hit a rainbow bump 🌈";
+        beep("bad");
+        spikeX -= 110;
+      }
+    }
+
+    // power-up pickup
+    const gotP = rectHit(uX,uYpx,uW,uH, powerX,260,46,46);
+    if (gotP){
+      if (powerType === "shield"){
+        shield = 1;
+        $("#runnerMsg").textContent = "🫧 Bubble Shield ON! (blocks 1 hit)";
+        unlockBadge("runner_shield", "Bubble Shield", "Used a shield power‑up!", "🫧");
+      } else {
+        magnetUntil = Date.now() + 6500;
+        $("#runnerMsg").textContent = "🧲 Star Magnet ON!";
+        unlockBadge("runner_magnet", "Star Magnet", "Used a magnet power‑up!", "🧲");
+      }
+      beep("win");
+      addStars(3, "Power-up! ⭐⭐⭐");
+      powerX = 1500 + Math.random()*650;
+      powerType = Math.random() < 0.55 ? "shield" : "magnet";
     }
 
     // stars pickups
-    const got1 = rectHit(uX,uYpx,uW,uH, starX,240,42,42);
-    const got2 = rectHit(uX,uYpx,uW,uH, star2X,260,42,42);
+    const magnetOn = Date.now() < magnetUntil;
+    const starY1 = 300, starY2 = 340;
+    const got1 = rectHit(uX,uYpx,uW,uH, starX,starY1,42,42) || (magnetOn && Math.abs(starX - uX) < 180);
+    const got2 = rectHit(uX,uYpx,uW,uH, star2X,starY2,42,42) || (magnetOn && Math.abs(star2X - uX) < 180);
     if (got1 || got2){
       collected++;
       $("#runnerStars").textContent = String(collected);
       addStars(2, "Star collected! ⭐⭐");
       beep("win");
-      if (got1) starX = 820 + Math.random()*380;
-      if (got2) star2X = 980 + Math.random()*420;
+      if (got1) starX = safeStarX(900, 520);
+      if (got2) star2X = safeStarX(1100, 560);
 
       if (collected >= 7){
         unlockBadge("runner_7", "Rainbow Sprinter", "Collected 7 stars!", "⭐");
       }
     }
+  }
+
+  function safeStarX(min, spread){
+    let x = min + Math.random()*spread;
+    const tooClose = (a,b,dist) => Math.abs(a-b) < dist;
+    // nudge away from obstacles
+    if (tooClose(x, cloudX, 180)) x += 220;
+    if (tooClose(x, spikeX, 180)) x += 220;
+    return x;
   }
 
   function setRunnerPositions(){
@@ -516,18 +854,27 @@
     cloud.style.left = `${cloudX}px`;
     cloud.style.bottom = `120px`;
     star.style.left = `${starX}px`;
-    star.style.bottom = `240px`;
+    star.style.bottom = `300px`;
 
     // add a second star + spike if they exist in DOM (optional)
     const star2 = $("#runnerStar2");
     const spike = $("#runnerSpike");
     if (star2){
       star2.style.left = `${star2X}px`;
-      star2.style.bottom = `260px`;
+      star2.style.bottom = `340px`;
     }
     if (spike){
       spike.style.left = `${spikeX}px`;
       spike.style.bottom = `120px`;
+    }
+
+    const p = $("#runnerPower");
+    if (p){
+      p.style.left = `${powerX}px`;
+      p.style.bottom = `260px`;
+      p.textContent = (powerType === "shield") ? "🫧" : "🧲";
+      // little visual hint when active
+      p.style.opacity = 0.95;
     }
   }
 
@@ -915,11 +1262,15 @@
     $("#badges").textContent = String(Object.keys(STATE.badges||{}).length);
 
     setupSparkleBg();
+    TAB_HOOKS.dressup = setupDressup;
+    TAB_HOOKS.pet = setupPet;
     setupTabs();
     setupHeaderBtns();
     setupHome();
 
     setupGallery();
+    setupDressup();
+    setupPet();
     setupMatch();
     setupRunner();
     setupColor();
