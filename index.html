@@ -311,6 +311,15 @@
 
   <footer class="foot">Made for Journey 🦄✨</footer>
 
+  <!-- If JavaScript fails to load, show a helpful banner -->
+  <div class="jsWarning" id="jsWarning" role="alert">
+    <b>Oops!</b> Unicorn World didn’t load its magic (JavaScript).
+    <div class="small">
+      Fix: make sure <code>index.html</code>, <code>styles.css</code>, and <code>app.js</code> are in the repo root,
+      and that this page loads <code>./app.js</code> without a 404.
+    </div>
+  </div>
+
 <script>
   // Unicorn image set (local repo images)
   window.UNICORN_IMAGES = [
@@ -325,6 +334,16 @@
   ];
 </script>
 
-  <script src="./app.js"></script>
+  <script>
+    // Hide the warning once JS is confirmed running
+    window.__UNICORN_BOOT_OK__ = false;
+    setTimeout(() => {
+      if (window.__UNICORN_BOOT_OK__) return;
+      const w = document.getElementById('jsWarning');
+      if (w) w.classList.add('show');
+    }, 1200);
+  </script>
+
+  <script src="./app.js" defer></script>
 </body>
 </html>
