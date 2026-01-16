@@ -33,6 +33,8 @@
   <nav class="tabs">
     <button class="tab active" data-tab="home">🏰 Home</button>
     <button class="tab" data-tab="gallery">🖼️ Unicorn Gallery</button>
+    <button class="tab" data-tab="dressup">👗 Dress‑Up</button>
+    <button class="tab" data-tab="pet">🐾 Unicorn Pet</button>
     <button class="tab" data-tab="match">🧠 Match Game</button>
     <button class="tab" data-tab="runner">🌈 Rainbow Runner</button>
     <button class="tab" data-tab="color">🎨 Color Magic</button>
@@ -68,6 +70,81 @@
             <button class="btn" id="newMission">🎯 New mission</button>
           </div>
           <div class="note">Missions help Journey stay interested and unlock rewards 🏅</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DRESS-UP -->
+    <section class="panel" id="tab-dressup">
+      <div class="panelHead">
+        <h2>Unicorn Dress‑Up</h2>
+        <div class="hint">Pick outfits and drag accessories onto your unicorn 👑🎀</div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="miniRow">
+            <button class="btn primary" id="dressRandom">✨ Surprise Look</button>
+            <button class="btn" id="dressClear">🧼 Clear</button>
+            <button class="btn" id="dressSnap">📸 Sparkle Photo</button>
+            <button class="btn" id="readDress">🔈 Read</button>
+          </div>
+
+          <h3 class="h3">Choose a background</h3>
+          <div class="swatches" id="bgSwatches"></div>
+
+          <h3 class="h3">Accessories (drag onto unicorn)</h3>
+          <div class="swatches" id="accSwatches"></div>
+
+          <div class="note">Tip: Drag accessories around. Double‑click one to remove ✨</div>
+        </div>
+
+        <div class="card arena">
+          <div class="dressStage" id="dressStage" aria-label="Dress up stage">
+            <img class="dressBase" id="dressBase" alt="Unicorn" />
+            <div class="dressGlow" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- UNICORN PET -->
+    <section class="panel" id="tab-pet">
+      <div class="panelHead">
+        <h2>Unicorn Pet</h2>
+        <div class="hint">Feed, brush, and play to fill the hearts 💖</div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="petStats">
+            <div class="stat"><span>💖 Happiness</span><div class="bar"><div id="petHappy" class="fill"></div></div></div>
+            <div class="stat"><span>✨ Sparkle</span><div class="bar"><div id="petSparkle" class="fill"></div></div></div>
+            <div class="stat"><span>⚡ Energy</span><div class="bar"><div id="petEnergy" class="fill"></div></div></div>
+          </div>
+
+          <div class="miniRow">
+            <button class="btn primary" id="petFeed">🍓 Feed</button>
+            <button class="btn" id="petBrush">🪮 Brush</button>
+            <button class="btn" id="petBath">🫧 Bubble Bath</button>
+            <button class="btn" id="petPlay">🎀 Play</button>
+          </div>
+
+          <div class="miniRow">
+            <button class="btn" id="petTalk">💬 Talk</button>
+            <button class="btn" id="petSleep">😴 Nap</button>
+            <button class="btn" id="petReset">♻ Reset</button>
+            <button class="btn" id="readPet">🔈 Read</button>
+          </div>
+
+          <div class="note" id="petMsg">Your unicorn is waiting for a hug 🦄</div>
+        </div>
+
+        <div class="card arena">
+          <div class="petStage" id="petStage" aria-label="Unicorn pet">
+            <img class="petBase" id="petBase" alt="Pet unicorn" />
+            <div class="petFloat" id="petFloat" aria-hidden="true"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -155,6 +232,7 @@
             <div class="runnerThing star" id="runnerStar"></div>
             <div class="runnerThing star" id="runnerStar2"></div>
             <div class="runnerThing cloud" id="runnerSpike" style="border-radius:14px;background:rgba(255,79,216,.18);"></div>
+            <div class="runnerThing power" id="runnerPower">🫧</div>
           </div>
         </div>
       </div>
@@ -238,12 +316,12 @@
   window.UNICORN_IMAGES = [
     { src: "./assets_journey_unicorn/images/unicorn1.jpg", caption: "Rainbow Unicorn ✨" },
     { src: "./assets_journey_unicorn/images/unicorn2.jpg", caption: "Cute Baby Unicorn 💖" },
-    { src: "./assets_journey_unicorn/images/unicorn3.jpg", caption: "Dreamy Night Unicorn ⭐" }
-    { src: "./assets_journey_unicorn/images/unicorn4.jpg", caption: "Sleepy Unicorn ⭐" }
-    { src: "./assets_journey_unicorn/images/unicorn5.jpg", caption: "Sparkle Unicorn 🌈" }
-    { src: "./assets_journey_unicorn/images/unicorn6.jpg", caption: "Flowy Baby Unicorn ⭐" }
-    { src: "./assets_journey_unicorn/images/unicorn7.jpg", caption: "Baby Star Unicorn ✨" }
-    { src: "./assets_journey_unicorn/images/unicorn8.jpg", caption: "Huggy and Friend Unicorn 🦄" }
+    { src: "./assets_journey_unicorn/images/unicorn3.jpg", caption: "Dreamy Night Unicorn ⭐" },
+    { src: "./assets_journey_unicorn/images/unicorn4.jpg", caption: "Sleepy Unicorn ⭐" },
+    { src: "./assets_journey_unicorn/images/unicorn5.jpg", caption: "Sparkle Unicorn 🌈" },
+    { src: "./assets_journey_unicorn/images/unicorn6.jpg", caption: "Flowy Baby Unicorn ⭐" },
+    { src: "./assets_journey_unicorn/images/unicorn7.jpg", caption: "Baby Star Unicorn ✨" },
+    { src: "./assets_journey_unicorn/images/unicorn8.jpg", caption: "Huggy & Friends 🦄" }
   ];
 </script>
 
