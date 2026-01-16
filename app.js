@@ -1,6 +1,9 @@
 (() => {
   "use strict";
 
+  // Allows index.html to show a helpful banner if JS fails to run
+  window.__UNICORN_BOOT_OK__ = true;
+
   /* ---------------- Helpers ---------------- */
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
@@ -1258,31 +1261,39 @@
      Init
      ========================================================= */
   function init(){
-    $("#stars").textContent = String(STATE.stars|0);
-    $("#badges").textContent = String(Object.keys(STATE.badges||{}).length);
+    try{
+      $("#stars").textContent = String(STATE.stars|0);
+      $("#badges").textContent = String(Object.keys(STATE.badges||{}).length);
 
-    setupSparkleBg();
-    TAB_HOOKS.dressup = setupDressup;
-    TAB_HOOKS.pet = setupPet;
-    setupTabs();
-    setupHeaderBtns();
-    setupHome();
+      setupSparkleBg();
+      TAB_HOOKS.dressup = setupDressup;
+      TAB_HOOKS.pet = setupPet;
+      setupTabs();
+      setupHeaderBtns();
+      setupHome();
 
-    setupGallery();
-    setupDressup();
-    setupPet();
-    setupMatch();
-    setupRunner();
-    setupColor();
-    setupWishes();
-    renderBadges();
+      setupGallery();
+      setupDressup();
+      setupPet();
+      setupMatch();
+      setupRunner();
+      setupColor();
+      setupWishes();
+      renderBadges();
 
-    setTimeout(() => {
-      setSub("Welcome, Journey! 🦄✨");
-      speak("Welcome, Journey! Pick a tab and have fun in Unicorn World!");
-    }, 450);
+      setTimeout(() => {
+        setSub("Welcome, Journey! 🦄✨");
+        speak("Welcome, Journey! Pick a tab and have fun in Unicorn World!");
+      }, 450);
+    }catch(err){
+      console.error("Unicorn World boot error:", err);
+      const w = document.getElementById('jsWarning');
+      if (w){
+        w.classList.add('show');
+        w.innerHTML = `<b>Oops!</b> Unicorn World hit a bug.<div class="small">Open DevTools → Console and look for <code>Unicorn World boot error</code>.</div>`;
+      }
+    }
   }
 
   document.addEventListener("DOMContentLoaded", init);
 })();
-
