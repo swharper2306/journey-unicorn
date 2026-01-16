@@ -257,6 +257,129 @@ body{
   grid-template-columns: repeat(2, 1fr);
   gap:12px;
 }
+
+/* =========================================================
+   DRESS-UP + PET
+   ========================================================= */
+.h3{ margin: 14px 0 8px; font-size: 1.05rem; }
+
+.swatches{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.swatch{
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  cursor:pointer;
+  position:relative;
+}
+.swatch:active{ transform: scale(.98); }
+.swatch::after{
+  content: "";
+  position:absolute;
+  inset:6px;
+  border-radius: 12px;
+  background: var(--sw);
+}
+
+.accSwatch::after{
+  content: attr(data-emoji);
+  background: transparent;
+  inset:0;
+  display:grid;
+  place-items:center;
+  font-size: 26px;
+}
+
+.dressStage{
+  height: 520px;
+  position:relative;
+  overflow:hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.14);
+  background:
+    radial-gradient(900px 520px at 30% 20%, rgba(167,139,250,.20), transparent 62%),
+    radial-gradient(900px 520px at 75% 75%, rgba(255,79,216,.18), transparent 62%),
+    rgba(0,0,0,.18);
+}
+
+.dressBase{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%,-50%);
+  width: min(420px, 86%);
+  height:auto;
+  filter: drop-shadow(0 18px 40px rgba(0,0,0,.45));
+  user-select:none;
+  pointer-events:none;
+}
+
+.dressGlow{
+  position:absolute;
+  inset:-40px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,.14) 0 180px, transparent 260px),
+    radial-gradient(circle at 70% 70%, rgba(255,79,216,.10) 0 220px, transparent 320px);
+  opacity:.9;
+  pointer-events:none;
+}
+
+.dressItem{
+  position:absolute;
+  font-size: 40px;
+  cursor: grab;
+  user-select:none;
+  touch-action:none;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+}
+.dressItem:active{ cursor: grabbing; }
+
+.petStage{
+  height: 520px;
+  position:relative;
+  overflow:hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.14);
+  background:
+    radial-gradient(900px 520px at 35% 20%, rgba(96,165,250,.16), transparent 62%),
+    radial-gradient(900px 520px at 70% 70%, rgba(255,79,216,.16), transparent 62%),
+    rgba(0,0,0,.18);
+}
+
+.petBase{
+  position:absolute;
+  left:50%;
+  top:52%;
+  transform: translate(-50%,-50%);
+  width: min(420px, 86%);
+  height:auto;
+  filter: drop-shadow(0 18px 40px rgba(0,0,0,.45));
+  user-select:none;
+  pointer-events:none;
+}
+
+.petFloat{
+  position:absolute;
+  left:50%;
+  top:18%;
+  transform: translateX(-50%);
+  font-size: 44px;
+  opacity:0;
+  pointer-events:none;
+}
+
+.petStats{ display:flex; flex-direction:column; gap:10px; margin-bottom: 8px; }
+.stat{ display:flex; flex-direction:column; gap:6px; }
+.stat span{ font-weight:800; }
+.bar{ height: 14px; border-radius: 999px; background: rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.12); overflow:hidden; }
+.fill{ height:100%; width: 50%; border-radius:999px; background: linear-gradient(90deg, rgba(255,79,216,.95), rgba(96,165,250,.95)); }
 @media (min-width: 700px){
   .gallery{ grid-template-columns: repeat(3, 1fr); }
 }
@@ -377,6 +500,20 @@ body{
 .back{ transform: rotateY(0deg); }
 .front{ transform: rotateY(180deg); }
 
+.back{
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.18) 0 60px, transparent 80px),
+    radial-gradient(circle at 70% 70%, rgba(255,79,216,.14) 0 70px, transparent 95px),
+    rgba(255,255,255,.06);
+}
+.back::before{
+  content:"🦄";
+  font-size: 42px;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+}
+
 /* Flipped state: show FRONT */
 .cardTile.flipped .back{ transform: rotateY(180deg); }
 .cardTile.flipped .front{ transform: rotateY(0deg); }
@@ -445,6 +582,16 @@ body{
   border-radius: 18px;
   border: 1px solid rgba(255,255,255,.16);
   box-shadow: 0 16px 40px rgba(0,0,0,.35);
+}
+
+.runnerThing.power{
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  display:grid;
+  place-items:center;
+  font-size: 26px;
+  background: rgba(255,255,255,.10);
 }
 
 .cloud{
