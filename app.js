@@ -804,7 +804,7 @@
     }
 
     // power-up pickup
-    const gotP = rectHit(uX,uYpx,uW,uH, powerX,260,46,46);
+    const gotP = rectHit(uX,uYpx,uW,uH, powerX,RUNNER_POWER_Y,46,46);
     if (gotP){
       if (powerType === "shield"){
         shield = 1;
@@ -825,7 +825,7 @@
     // Stars were previously placed too high for the unicorn's jump arc.
     // Keep them reachable and fun.
     const magnetOn = Date.now() < magnetUntil;
-    const starY1 = 220, starY2 = 255;
+    const starY1 = RUNNER_STAR_Y1, starY2 = RUNNER_STAR_Y2;
     const got1 = rectHit(uX,uYpx,uW,uH, starX,starY1,42,42) || (magnetOn && Math.abs(starX - uX) < 180);
     const got2 = rectHit(uX,uYpx,uW,uH, star2X,starY2,42,42) || (magnetOn && Math.abs(star2X - uX) < 180);
     if (got1 || got2){
@@ -860,14 +860,14 @@
     cloud.style.bottom = `120px`;
     star.style.left = `${starX}px`;
     // Keep stars within reachable jump height.
-    star.style.bottom = `220px`;
+    star.style.bottom = `${RUNNER_STAR_Y1}px`;
 
     // add a second star + spike if they exist in DOM (optional)
     const star2 = $("#runnerStar2");
     const spike = $("#runnerSpike");
     if (star2){
       star2.style.left = `${star2X}px`;
-      star2.style.bottom = `255px`;
+      star2.style.bottom = `${RUNNER_STAR_Y2}px`;
     }
     if (spike){
       spike.style.left = `${spikeX}px`;
@@ -877,7 +877,7 @@
     const p = $("#runnerPower");
     if (p){
       p.style.left = `${powerX}px`;
-      p.style.bottom = `260px`;
+      p.style.bottom = `${RUNNER_POWER_Y}px`;
       p.textContent = (powerType === "shield") ? "🫧" : "🧲";
       // little visual hint when active
       p.style.opacity = 0.95;
