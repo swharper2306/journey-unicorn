@@ -1,16 +1,9 @@
-/* =========================================================
-   Journey’s Unicorn World 🦄✨
-   app.js — Gallery + Match + Runner + Color Magic + Wish Jar
-   GitHub Pages friendly. No external libraries.
-   Uses window.UNICORN_IMAGES from index.html
-   ========================================================= */
 (() => {
   "use strict";
 
   /* ---------------- Helpers ---------------- */
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
-  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
   const shuffle = (arr) => {
     const a = arr.slice();
@@ -59,17 +52,14 @@
       const o = ctx.createOscillator();
       const g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination);
-
       const now = ctx.currentTime;
       o.type = "sine";
       const base = (type === "win") ? 660 : (type === "bad") ? 220 : 440;
       o.frequency.setValueAtTime(base, now);
       o.frequency.exponentialRampToValueAtTime(base * 1.12, now + 0.08);
-
       g.gain.setValueAtTime(0.0001, now);
       g.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
-
       o.start(now);
       o.stop(now + 0.14);
       setTimeout(() => ctx.close?.(), 250);
@@ -88,32 +78,29 @@
     } catch {}
   }
 
-  /* ---------------- Global state ---------------- */
+  /* ---------------- Images ---------------- */
+  // Put ALL your new images in window.UNICORN_IMAGES in index.html
+  // and they will automatically appear in Gallery + Match.
   const IMAGES = (window.UNICORN_IMAGES && window.UNICORN_IMAGES.length)
     ? window.UNICORN_IMAGES
     : [
-        { src: "./assets_journey_unicorn/images/unicorn1.jpg", caption: "Unicorn 1" },
-        { src: "./assets_journey_unicorn/images/unicorn2.jpg", caption: "Unicorn 2" },
-        { src: "./assets_journey_unicorn/images/unicorn3.jpg", caption: "Unicorn 3" },
-      ];
+      { src: "./assets_journey_unicorn/images/unicorn1.jpg", caption: "Rainbow Unicorn ✨" },
+      { src: "./assets_journey_unicorn/images/unicorn2.jpg", caption: "Cute Unicorn 💖" },
+      { src: "./assets_journey_unicorn/images/unicorn3.jpg", caption: "Dreamy Unicorn ⭐" },
+    ];
 
+  /* ---------------- State ---------------- */
   const STATE = store.get("uw_state", {
     stars: 0,
     badges: {},
     mission: null,
-
-    match: { bestTimeEasy: null, bestTimeHard: null },
     wishes: [],
+    match: { bestEasy: null, bestHard: null },
   });
 
   function saveState(){ store.set("uw_state", STATE); }
-
-  function setSub(text){
-    const el = $("#subline");
-    if (el) el.textContent = text;
-  }
-
-  function addStars(n, why = ""){
+  function setSub(text){ const el = $("#subline"); if (el) el.textContent = text; }
+  function addStars(n, why=""){
     STATE.stars = Math.max(0, (STATE.stars|0) + (n|0));
     $("#stars").textContent = String(STATE.stars);
     if (why) setSub(why);
@@ -132,7 +119,8 @@
     return true;
   }
 
-  /* ---------------- Tabs ---------------- */
+  /* ---------------- Tabs (with hooks) ---------------- */
+  const TAB_HOOKS = {};
   function setupTabs(){
     $$(".tab").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -141,7 +129,7 @@
         $$(".panel").forEach(p => p.classList.remove("active"));
         btn.classList.add("active");
         const name = btn.dataset.tab;
-        $(`#tab-${name}`).classList.add("active");
+        $(`#tab-${name}`)?.classList.add("active");
 
         const t = {
           home:"Welcome home 🦄",
@@ -153,29 +141,28 @@
           trophies:"Trophies"
         };
         setSub(t[name] || "Unicorn time!");
+        TAB_HOOKS[name]?.();
       });
     });
 
-    // Quick buttons
     $("#btnQuickMatch")?.addEventListener("click", () => clickTab("match"));
     $("#btnQuickColor")?.addEventListener("click", () => clickTab("color"));
     $("#btnQuickWish")?.addEventListener("click", () => clickTab("wishes"));
   }
-
   function clickTab(name){
     const btn = $(`.tab[data-tab="${name}"]`);
     if (btn) btn.click();
   }
 
-  /* ---------------- Header buttons ---------------- */
+  /* ---------------- Header Buttons ---------------- */
   function setupHeaderBtns(){
     const soundBtn = $("#soundBtn");
     const ttsBtn = $("#ttsBtn");
 
-    function paint(){
+    const paint = () => {
       soundBtn.textContent = soundOn ? "🔊 Sound: ON" : "🔇 Sound: OFF";
       ttsBtn.textContent = ttsOn ? "🗣️ Read: ON" : "🔕 Read: OFF";
-    }
+    };
     paint();
 
     soundBtn.addEventListener("click", () => {
@@ -195,102 +182,57 @@
 
     $("#resetBtn").addEventListener("click", () => {
       beep("bad");
-      const ok = confirm("Reset Journey’s Unicorn World? This clears stars, badges, wishes, and best scores.");
+      const ok = confirm("Reset Unicorn World? (clears stars, badges, wishes)");
       if (!ok) return;
       localStorage.removeItem("uw_state");
-      localStorage.removeItem("uw_soundOn");
-      localStorage.removeItem("uw_ttsOn");
       location.reload();
     });
   }
 
   /* =========================================================
-     Mission system (simple, fun, keeps attention)
+     HOME (more fun)
      ========================================================= */
-  const MISSION_POOL = [
-    { id:"m_gallery", text:"Look at the Unicorn Gallery and tap a unicorn.", tip:"Go to Gallery and tap any unicorn!", reward: 3 },
-    { id:"m_match", text:"Win the Match Game on Easy mode.", tip:"Press Easy and match all pairs!", reward: 6 },
-    { id:"m_runner", text:"Collect 5 stars in Rainbow Runner.", tip:"Press Start, then Jump to collect ⭐!", reward: 6 },
-    { id:"m_color", text:"Draw a big rainbow in Color Magic.", tip:"Pick colors and draw across the canvas!", reward: 4 },
-    { id:"m_wishes", text:"Add 3 wishes to the Wish Jar.", tip:"Type a wish and press Add.", reward: 5 },
-  ];
-
-  function setupMissions(){
-    const box = $("#missionBox");
-    const readBtn = $("#readMission");
-    const newBtn = $("#newMission");
-    if (!box || !readBtn || !newBtn) return;
-
-    if (!STATE.mission) STATE.mission = pick(MISSION_POOL).id;
-
-    function render(){
-      const m = MISSION_POOL.find(x => x.id === STATE.mission) || MISSION_POOL[0];
-      box.innerHTML = `
-        <div>${m.text}</div>
-        <span class="small">Tip: ${m.tip}</span>
-      `;
-      saveState();
+  function setupHome(){
+    const spells = [
+      "✨ Rainbow Sparkle Spell: Clap 3 times!",
+      "💖 Kindness Spell: Give someone a hug!",
+      "⭐ Star Spell: Find 5 things that glitter!",
+      "🦄 Unicorn Spell: Do your silliest unicorn pose!",
+      "🌈 Magic Spell: Draw a rainbow with your finger!"
+    ];
+    const box = $("#homeTip");
+    if (box) {
+      const daily = pick(spells);
+      box.textContent = daily;
+      $("#readMission")?.addEventListener("click", () => speak(daily));
     }
-
-    readBtn.addEventListener("click", () => {
-      const m = MISSION_POOL.find(x => x.id === STATE.mission) || MISSION_POOL[0];
-      beep("tap");
-      speak(m.text + " " + m.tip);
-    });
-
-    newBtn.addEventListener("click", () => {
-      beep("tap");
-      const options = MISSION_POOL.filter(x => x.id !== STATE.mission);
-      STATE.mission = pick(options).id;
-      render();
-      setSub("New mission loaded 🎯");
-    });
-
-    render();
-  }
-
-  function completeMissionIf(id){
-    if (!STATE.mission) return;
-    if (STATE.mission !== id) return;
-    const m = MISSION_POOL.find(x => x.id === id);
-    if (!m) return;
-    addStars(m.reward, `Mission complete! ⭐ +${m.reward}`);
-    unlockBadge(`mission_${id}`, "Mission Star", "Completed a Unicorn Mission!", "🎯");
-    // new mission
-    STATE.mission = pick(MISSION_POOL.filter(x => x.id !== id)).id;
-    setupMissions(); // re-render
   }
 
   /* =========================================================
-     Gallery
+     GALLERY
      ========================================================= */
   function setupGallery(){
     const box = $("#gallery");
     if (!box) return;
-
     box.innerHTML = "";
+
     IMAGES.forEach((it, idx) => {
       const d = document.createElement("div");
       d.className = "gItem";
       d.innerHTML = `
         <img src="${it.src}" alt="Unicorn ${idx+1}">
-        <div class="gCap">${it.caption}</div>
+        <div class="gCap">${it.caption || `Unicorn ${idx+1}`}</div>
       `;
       d.addEventListener("click", () => {
         beep("tap");
-        openModal(it.src, it.caption);
+        openModal(it.src, it.caption || "Unicorn!");
         addStars(1, "Unicorn spotted! ⭐");
-        completeMissionIf("m_gallery");
       });
       box.appendChild(d);
     });
 
-    const modal = $("#modal");
-    const close = $("#closeModal");
-    close?.addEventListener("click", closeModal);
-    modal?.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal();
-    });
+    $("#closeModal")?.addEventListener("click", closeModal);
+    $("#modal")?.addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
   }
 
   function openModal(src, caption){
@@ -303,7 +245,6 @@
     modal.classList.add("show");
     modal.setAttribute("aria-hidden","false");
   }
-
   function closeModal(){
     const modal = $("#modal");
     if (!modal) return;
@@ -312,80 +253,80 @@
   }
 
   /* =========================================================
-     Match Game (uses 3 unicorn images + cute emoji backs)
+     MATCH GAME (FIXED flip + MORE images automatically)
      ========================================================= */
-  let matchTimer = null;
-  let matchSeconds = 0;
-  let matchRunning = false;
-  let flips = 0;
-  let matches = 0;
-
-  let first = null;
-  let lock = false;
-  let matchDeck = [];
+  let matchTimer=null, matchSeconds=0, matchRunning=false;
+  let flips=0, matches=0, first=null, lock=false;
 
   function setupMatch(){
     $("#startMatchEasy")?.addEventListener("click", () => startMatch("easy"));
     $("#startMatchHard")?.addEventListener("click", () => startMatch("hard"));
-    $("#resetMatch")?.addEventListener("click", () => resetMatch());
+    $("#resetMatch")?.addEventListener("click", resetMatch);
     $("#readMatch")?.addEventListener("click", () => speak(
-      "Match Game! Press Easy or Hard. Tap cards to flip. Find pairs to win and unlock a badge!"
+      "Match Game! Tap cards to flip. Find pairs to win!"
     ));
   }
 
   function startMatch(mode){
     beep("tap");
     resetMatch();
+
     const board = $("#matchBoard");
     const msg = $("#matchMsg");
     if (!board || !msg) return;
 
-    // Build deck: easy = 8 cards (4 pairs), hard = 12 cards (6 pairs)
-    // We only have 3 images, so we reuse them with different "frames" by pairing IDs.
+    // easy = 8 cards (4 pairs) | hard = 12 cards (6 pairs)
     const pairs = (mode === "easy") ? 4 : 6;
-    const items = [];
-    for (let i = 0; i < pairs; i++) {
-      const img = IMAGES[i % IMAGES.length];
-      items.push({ key: `p${i}`, src: img.src });
+
+    // Use as many unique images as possible, then repeat if needed
+    const pool = shuffle(IMAGES);
+    const chosen = [];
+    for (let i=0; i<pairs; i++){
+      chosen.push(pool[i % pool.length]);
     }
-    matchDeck = shuffle([...items, ...items]); // duplicate for pairs
+
+    // Build pair deck
+    const deck = shuffle([...chosen, ...chosen].map((it, i) => ({
+      id: it.src + "::" + (i < pairs ? "a" : "b"),
+      key: it.src, // pair by src
+      src: it.src
+    })));
+
     board.className = "matchBoard " + mode;
     board.innerHTML = "";
 
-    // reset stats
-    flips = 0; matches = 0; first = null; lock = false;
+    flips=0; matches=0; first=null; lock=false;
     $("#flipCount").textContent = "0";
     $("#matchCount").textContent = "0";
     $("#matchTime").textContent = "0";
     msg.textContent = "Find all pairs! ✨";
 
-    // create tiles
-    matchDeck.forEach((it, idx) => {
+    deck.forEach((it) => {
       const tile = document.createElement("div");
       tile.className = "cardTile";
       tile.dataset.key = it.key;
-      tile.dataset.idx = String(idx);
-
       tile.innerHTML = `
         <div class="face back"></div>
-        <div class="face front">
-          <img src="${it.src}" alt="Unicorn card">
-        </div>
+        <div class="face front"><img src="${it.src}" alt="Unicorn card"></div>
       `;
-
       tile.addEventListener("click", () => flipTile(tile));
       board.appendChild(tile);
     });
 
-    startMatchTimer();
-    matchRunning = true;
+    matchSeconds=0;
+    matchTimer = setInterval(() => {
+      matchSeconds++;
+      $("#matchTime").textContent = String(matchSeconds);
+    }, 1000);
+    matchRunning=true;
   }
 
   function resetMatch(){
-    stopMatchTimer();
-    matchRunning = false;
-    matchSeconds = 0;
-    flips = 0; matches = 0; first = null; lock = false;
+    matchRunning=false;
+    if (matchTimer) clearInterval(matchTimer);
+    matchTimer=null;
+    matchSeconds=0;
+    flips=0; matches=0; first=null; lock=false;
     $("#flipCount").textContent = "0";
     $("#matchCount").textContent = "0";
     $("#matchTime").textContent = "0";
@@ -394,119 +335,77 @@
     if (board) board.innerHTML = "";
   }
 
-  function startMatchTimer(){
-    stopMatchTimer();
-    matchSeconds = 0;
-    matchTimer = setInterval(() => {
-      matchSeconds++;
-      $("#matchTime").textContent = String(matchSeconds);
-    }, 1000);
-  }
-
-  function stopMatchTimer(){
-    if (matchTimer) clearInterval(matchTimer);
-    matchTimer = null;
-  }
-
   function flipTile(tile){
-    if (!matchRunning) return;
-    if (lock) return;
-    if (tile.classList.contains("matched")) return;
-    if (tile.classList.contains("flipped")) return;
+    if (!matchRunning || lock) return;
+    if (tile.classList.contains("matched") || tile.classList.contains("flipped")) return;
 
     beep("tap");
     tile.classList.add("flipped");
     flips++;
     $("#flipCount").textContent = String(flips);
 
-    if (!first){
-      first = tile;
-      return;
-    }
+    if (!first){ first = tile; return; }
 
     const a = first.dataset.key;
     const b = tile.dataset.key;
 
     if (a === b){
-      // matched
       lock = true;
       setTimeout(() => {
         first.classList.add("matched");
         tile.classList.add("matched");
         first = null;
         lock = false;
-
         matches++;
         $("#matchCount").textContent = String(matches);
         addStars(2, "Match! ⭐⭐");
         beep("win");
 
         const totalPairs = ($$("#matchBoard .cardTile").length / 2) | 0;
-        if (matches >= totalPairs){
-          winMatch(totalPairs);
-        }
-      }, 280);
+        if (matches >= totalPairs) winMatch(totalPairs);
+      }, 220);
     } else {
-      // not matched
       lock = true;
       setTimeout(() => {
         first.classList.remove("flipped");
         tile.classList.remove("flipped");
         first = null;
         lock = false;
-      }, 560);
+      }, 520);
     }
   }
 
   function winMatch(totalPairs){
-    stopMatchTimer();
-    matchRunning = false;
+    if (matchTimer) clearInterval(matchTimer);
+    matchTimer=null;
+    matchRunning=false;
 
-    const mode = $("#matchBoard").classList.contains("hard") ? "hard" : "easy";
-    const msg = $("#matchMsg");
-    if (msg) msg.textContent = `You won! 🎉 ${totalPairs} pairs matched in ${matchSeconds}s!`;
+    const hard = $("#matchBoard")?.classList.contains("hard");
+    $("#matchMsg").textContent = `You won! 🎉 ${totalPairs} pairs in ${matchSeconds}s!`;
 
-    addStars(8, "You won Match Game! ⭐⭐⭐⭐⭐⭐⭐⭐");
-    unlockBadge(`match_${mode}`, mode === "easy" ? "Match Winner" : "Match Master", "Won the Match Game!", "🧠");
-    speak(`You won! Great matching, Journey!`);
-
-    // best times
-    const key = (mode === "easy") ? "bestTimeEasy" : "bestTimeHard";
-    const best = STATE.match[key];
-    if (!best || matchSeconds < best){
-      STATE.match[key] = matchSeconds;
-      saveState();
-      unlockBadge(`best_${mode}`, "Fast Unicorn!", "New best time!", "⏱️");
-    }
-
-    completeMissionIf("m_match");
+    addStars(10, "Match win! ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐");
+    unlockBadge(hard ? "match_hard" : "match_easy",
+      hard ? "Match Master" : "Match Winner",
+      "Won the Match Game!",
+      "🧠"
+    );
+    speak("You won! Great job Journey!");
   }
 
   /* =========================================================
-     Rainbow Runner (simple 1-button jump game)
+     RAINBOW RUNNER (more elements)
      ========================================================= */
-  let runnerOn = false;
-  let runnerLoop = null;
-  let unicornY = 0;
-  let vy = 0;
-  let gravity = -0.8; // upward is positive in our calc
-  let jumping = false;
-
-  let cloudX = 820;
-  let starX = 520;
-  let score = 0;
-  let collected = 0;
-  let oops = 0;
+  let runnerOn=false, runnerLoop=null;
+  let uY=0, vy=0, jumping=false;
+  let speed=7.2;
+  let cloudX=820, spikeX=1100, starX=640, star2X=980;
+  let score=0, collected=0, oops=0;
 
   function setupRunner(){
     $("#runnerStart")?.addEventListener("click", runnerStart);
     $("#runnerReset")?.addEventListener("click", runnerReset);
     $("#runnerJump")?.addEventListener("click", runnerJump);
-    $("#readRunner")?.addEventListener("click", () => speak(
-      "Rainbow Runner! Press Start. Tap Jump to hop over clouds and collect stars. Get 5 stars to complete a mission!"
-    ));
 
-    // Spacebar jump
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") runnerJump();
     });
@@ -514,9 +413,10 @@
 
   function runnerReset(){
     runnerStop();
-    unicornY = 0; vy = 0; jumping = false;
-    cloudX = 820; starX = 520;
-    score = 0; collected = 0; oops = 0;
+    uY=0; vy=0; jumping=false;
+    speed=7.2;
+    cloudX=820; spikeX=1100; starX=640; star2X=980;
+    score=0; collected=0; oops=0;
     $("#runnerScore").textContent = "0";
     $("#runnerStars").textContent = "0";
     $("#runnerOops").textContent = "0";
@@ -527,121 +427,142 @@
   function runnerStart(){
     beep("tap");
     if (runnerOn) return;
-    runnerOn = true;
-    $("#runnerMsg").textContent = "Go! Jump over clouds! 🌈";
+    runnerOn=true;
+    $("#runnerMsg").textContent = "Go! Jump + grab stars! 🌈⭐";
     runnerLoop = setInterval(runnerTick, 30);
   }
 
   function runnerStop(){
-    runnerOn = false;
+    runnerOn=false;
     if (runnerLoop) clearInterval(runnerLoop);
-    runnerLoop = null;
+    runnerLoop=null;
   }
 
   function runnerJump(){
-    if (!runnerOn) return;
-    if (jumping) return;
+    if (!runnerOn || jumping) return;
     beep("tap");
-    vy = 12.5;
-    jumping = true;
+    vy=12.5;
+    jumping=true;
   }
 
   function runnerTick(){
     // physics
-    vy += gravity;
-    unicornY += vy;
-    if (unicornY <= 0){
-      unicornY = 0;
-      vy = 0;
-      jumping = false;
-    }
+    vy -= 0.8;
+    uY += vy;
+    if (uY <= 0){ uY=0; vy=0; jumping=false; }
 
-    // move obstacles
-    cloudX -= 7.2;
-    starX -= 7.2;
+    // move things
+    cloudX -= speed;
+    spikeX -= speed;
+    starX -= speed;
+    star2X -= speed;
 
-    if (cloudX < -80){
-      cloudX = 820 + Math.random()*220;
-      score += 1;
-      $("#runnerScore").textContent = String(score);
-    }
-    if (starX < -80){
-      starX = 820 + Math.random()*320;
-    }
+    // ramp difficulty slowly
+    score += 0.02;
+    speed = 7.2 + Math.min(4.8, score/18);
 
+    if (cloudX < -80) cloudX = 820 + Math.random()*240;
+    if (spikeX < -80) spikeX = 980 + Math.random()*360;
+    if (starX < -80) starX = 820 + Math.random()*380;
+    if (star2X < -80) star2X = 980 + Math.random()*420;
+
+    $("#runnerScore").textContent = String(score|0);
     setRunnerPositions();
 
-    // collision check with cloud (hitbox)
-    const uX = 68;
-    const uW = 48, uH = 48;
-    const uYpx = 120 + unicornY; // base from CSS bottom
+    // collision (cloud + spike)
+    const uX=68, uW=48, uH=48;
+    const uYpx = 120 + uY;
 
-    // cloud is at bottom 120px, approx size 60x44
-    const cX = cloudX;
-    const cY = 120;
-    const cW = 60, cH = 44;
-
-    if (rectHit(uX, uYpx, uW, uH, cX, cY, cW, cH) && unicornY < 8){
-      oops += 1;
+    // cloud at bottom
+    if (rectHit(uX,uYpx,uW,uH, cloudX,120,60,44) && uY < 8){
+      oops++;
       $("#runnerOops").textContent = String(oops);
-      $("#runnerMsg").textContent = "Oops! Try jumping a little earlier 😊";
+      $("#runnerMsg").textContent = "Oops! Jump earlier 😊";
       beep("bad");
-      // push cloud away so it doesn't double count
-      cloudX -= 40;
-      if (oops >= 3){
-        unlockBadge("runner_try", "Try Again Star", "You kept trying in Runner!", "🌈");
-      }
+      cloudX -= 60;
     }
 
-    // star pickup
-    const sX = starX;
-    const sY = 200; // star floats a bit above ground
-    const sW = 42, sH = 42;
-    if (rectHit(uX, uYpx, uW, uH, sX, sY, sW, sH)){
-      collected += 1;
+    // spike (remixed obstacle)
+    if (rectHit(uX,uYpx,uW,uH, spikeX,120,44,44) && uY < 8){
+      oops++;
+      $("#runnerOops").textContent = String(oops);
+      $("#runnerMsg").textContent = "Boop! You hit a rainbow bump 🌈";
+      beep("bad");
+      spikeX -= 80;
+    }
+
+    // stars pickups
+    const got1 = rectHit(uX,uYpx,uW,uH, starX,240,42,42);
+    const got2 = rectHit(uX,uYpx,uW,uH, star2X,260,42,42);
+    if (got1 || got2){
+      collected++;
       $("#runnerStars").textContent = String(collected);
       addStars(2, "Star collected! ⭐⭐");
       beep("win");
-      // move star away
-      starX = 820 + Math.random()*320;
+      if (got1) starX = 820 + Math.random()*380;
+      if (got2) star2X = 980 + Math.random()*420;
 
-      if (collected >= 5){
-        unlockBadge("runner_5", "Rainbow Runner", "Collected 5 stars!", "⭐");
-        completeMissionIf("m_runner");
+      if (collected >= 7){
+        unlockBadge("runner_7", "Rainbow Sprinter", "Collected 7 stars!", "⭐");
       }
     }
   }
 
   function setRunnerPositions(){
-    const u = $("#runnerUnicorn");
-    const cloud = $("#runnerCloud");
-    const star = $("#runnerStar");
+    const u=$("#runnerUnicorn"), cloud=$("#runnerCloud"), star=$("#runnerStar");
     if (!u || !cloud || !star) return;
 
-    u.style.transform = `translateY(${-unicornY}px)`;
+    u.style.transform = `translateY(${-uY}px)`;
     cloud.style.left = `${cloudX}px`;
     cloud.style.bottom = `120px`;
-
     star.style.left = `${starX}px`;
     star.style.bottom = `240px`;
+
+    // add a second star + spike if they exist in DOM (optional)
+    const star2 = $("#runnerStar2");
+    const spike = $("#runnerSpike");
+    if (star2){
+      star2.style.left = `${star2X}px`;
+      star2.style.bottom = `260px`;
+    }
+    if (spike){
+      spike.style.left = `${spikeX}px`;
+      spike.style.bottom = `120px`;
+    }
   }
 
-  function rectHit(ax, ay, aw, ah, bx, by, bw, bh){
+  function rectHit(ax,ay,aw,ah, bx,by,bw,bh){
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
   }
 
   /* =========================================================
-     Color Magic (simple paint with stamps)
+     COLOR MAGIC (FIXED)
+     - lazy init when tab opens
+     - correct canvas sizing + coords
      ========================================================= */
-  let paintColor = "#ff4fd8";
-  let painting = false;
-  let stampMode = null; // "hearts" | "stars" | null
+  let colorReady=false;
+  let paintColor="#ff4fd8";
+  let stampMode=null;
+  let painting=false;
+  let ctx=null, canvas=null;
 
   function setupColor(){
-    const palette = $("#palette");
-    const canvas = $("#paint");
-    if (!palette || !canvas) return;
+    // run once tab opens (canvas has real size)
+    TAB_HOOKS.color = () => {
+      if (!colorReady) initColor();
+      else resizeCanvas();
+    };
+  }
 
+  function initColor(){
+    canvas = $("#paint");
+    const palette = $("#palette");
+    if (!canvas || !palette) return;
+
+    ctx = canvas.getContext("2d");
+    colorReady = true;
+
+    // build palette
     const colors = ["#ff4fd8","#fb7185","#a78bfa","#60a5fa","#34d399","#fbbf24","#f97316","#ffffff"];
     palette.innerHTML = "";
     colors.forEach((c, idx) => {
@@ -654,106 +575,162 @@
         stampMode = null;
         $$(".pColor").forEach(x => x.classList.remove("active"));
         b.classList.add("active");
-        $("#colorMsg").textContent = "Painting! Click/drag to draw.";
+        $("#colorMsg").textContent = "Painting! Drag to draw 🎨";
       });
       palette.appendChild(b);
     });
 
-    const ctx = canvas.getContext("2d");
-    resizePaintToCss(canvas, ctx);
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
 
-    function pos(e){
+    const getPos = (e) => {
       const r = canvas.getBoundingClientRect();
-      const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
-      const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
-      const x = (clientX - r.left) * (canvas.width / r.width);
-      const y = (clientY - r.top) * (canvas.height / r.height);
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+      const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
       return { x, y };
-    }
+    };
 
-    function drawDot(x,y){
+    const drawDot = (x,y) => {
       ctx.beginPath();
       ctx.fillStyle = paintColor;
       ctx.arc(x, y, 10, 0, Math.PI*2);
       ctx.fill();
-    }
+    };
 
-    function drawStamp(x,y){
+    const drawStamp = (x,y) => {
       ctx.save();
       ctx.font = "38px system-ui, Apple Color Emoji, Segoe UI Emoji";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(stampMode === "hearts" ? "💖" : "⭐", x, y);
       ctx.restore();
-    }
+    };
 
-    function onDown(e){
+    const down = (e) => {
       painting = true;
-      const p = pos(e);
+      const p = getPos(e);
       if (stampMode) drawStamp(p.x,p.y);
       else drawDot(p.x,p.y);
-      addStars(1, "Color magic! ⭐");
-      completeMissionIf("m_color"); // generous: first paint completes mission (kid-friendly)
+      addStars(1, "Magic paint! ⭐");
       e.preventDefault?.();
-    }
-    function onMove(e){
+    };
+    const move = (e) => {
       if (!painting) return;
-      const p = pos(e);
-      if (stampMode) return; // stamps only on click/tap
+      if (stampMode) return;
+      const p = getPos(e);
       drawDot(p.x,p.y);
       e.preventDefault?.();
-    }
-    function onUp(){ painting = false; }
+    };
+    const up = () => { painting = false; };
 
-    canvas.addEventListener("mousedown", onDown);
-    canvas.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    canvas.addEventListener("mousedown", down);
+    canvas.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
 
-    canvas.addEventListener("touchstart", onDown, { passive:false });
-    canvas.addEventListener("touchmove", onMove, { passive:false });
-    window.addEventListener("touchend", onUp);
-
-    window.addEventListener("resize", () => resizePaintToCss(canvas, ctx));
+    canvas.addEventListener("touchstart", down, { passive:false });
+    canvas.addEventListener("touchmove", move, { passive:false });
+    window.addEventListener("touchend", up);
 
     $("#clearPaint")?.addEventListener("click", () => {
       beep("bad");
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      $("#colorMsg").textContent = "Cleared! Paint again 🎨";
+      $("#colorMsg").textContent = "All clean! Paint again ✨";
     });
 
     $("#stampHearts")?.addEventListener("click", () => {
       beep("tap");
-      stampMode = "hearts";
+      stampMode="hearts";
       $("#colorMsg").textContent = "Heart stamps 💖 (tap to stamp)";
     });
 
     $("#stampStars")?.addEventListener("click", () => {
       beep("tap");
-      stampMode = "stars";
+      stampMode="stars";
       $("#colorMsg").textContent = "Star stamps ⭐ (tap to stamp)";
     });
 
     $("#readColor")?.addEventListener("click", () => speak(
-      "Color Magic! Pick a color and draw on the canvas. Use hearts or stars to stamp fun shapes!"
+      "Color Magic! Pick a color and drag to draw. Tap hearts or stars to stamp!"
     ));
   }
 
-  function resizePaintToCss(canvas, ctx){
+  function resizeCanvas(){
+    if (!canvas || !ctx) return;
     const r = canvas.getBoundingClientRect();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    // keep reasonable internal resolution
+
+    // If tab is hidden, r.width may be 0. Skip until visible.
+    if (r.width < 10 || r.height < 10) return;
+
+    // Preserve artwork by copying
+    const old = document.createElement("canvas");
+    old.width = canvas.width;
+    old.height = canvas.height;
+    old.getContext("2d").drawImage(canvas,0,0);
+
     canvas.width = Math.floor(r.width * dpr);
     canvas.height = Math.floor(r.height * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    // draw old back scaled
+    ctx.drawImage(old, 0, 0, old.width/dpr, old.height/dpr);
   }
 
   /* =========================================================
-     Wish Jar
+     WISH JAR (more kid-friendly)
      ========================================================= */
   function setupWishes(){
     const input = $("#wishInput");
     const list = $("#wishList");
     if (!input || !list) return;
+
+    // Big easy buttons (one tap)
+    const presets = [
+      "🧁 Unicorn cupcake!",
+      "👗 Rainbow dress!",
+      "🦄 A unicorn friend!",
+      "✨ Glitter magic!",
+      "🎀 Sparkly bow!",
+      "🌈 A rainbow room!"
+    ];
+
+    // Inject quick buttons under the input (if not already)
+    const card = $("#tab-wishes .card");
+    if (card && !$("#wishQuick")){
+      const wrap = document.createElement("div");
+      wrap.id = "wishQuick";
+      wrap.style.marginTop = "10px";
+      wrap.innerHTML = `<div class="note">Tap a wish button! (or type one)</div>`;
+      const row = document.createElement("div");
+      row.className = "miniRow";
+      presets.forEach(p => {
+        const b = document.createElement("button");
+        b.className = "btn";
+        b.textContent = p;
+        b.addEventListener("click", () => {
+          beep("tap");
+          addWish(p);
+        });
+        row.appendChild(b);
+      });
+      wrap.appendChild(row);
+
+      // Launch wish button
+      const launch = document.createElement("button");
+      launch.className = "btn primary";
+      launch.textContent = "🚀 Launch a Wish!";
+      launch.style.marginTop = "10px";
+      launch.addEventListener("click", () => {
+        if (!STATE.wishes.length){
+          speak("Add a wish first!");
+          return;
+        }
+        launchWishAnimation();
+      });
+      wrap.appendChild(launch);
+
+      card.appendChild(wrap);
+    }
 
     function render(){
       list.innerHTML = "";
@@ -769,26 +746,29 @@
           STATE.wishes.splice(i,1);
           saveState();
           render();
-          setSub("Wish removed.");
         });
         list.appendChild(row);
       });
 
       if (STATE.wishes.length >= 3){
         unlockBadge("wishes3", "Wish Maker", "Added 3 wishes!", "💖");
-        completeMissionIf("m_wishes");
       }
+    }
+
+    function addWish(v){
+      STATE.wishes.unshift(v);
+      saveState();
+      render();
+      addStars(2, "Wish added! ⭐⭐");
+      speak("Wish added!");
     }
 
     $("#addWish")?.addEventListener("click", () => {
       const v = input.value.trim();
       if (!v) return;
       beep("tap");
-      STATE.wishes.unshift(v);
       input.value = "";
-      saveState();
-      render();
-      addStars(2, "Wish added! ⭐⭐");
+      addWish(v);
     });
 
     input.addEventListener("keydown", (e) => {
@@ -797,15 +777,8 @@
 
     $("#randomWish")?.addEventListener("click", () => {
       beep("tap");
-      const ideas = [
-        "I wish for a unicorn cupcake!",
-        "I wish for sparkly rainbow shoes!",
-        "I wish for a unicorn friend!",
-        "I wish for glittery magic!",
-        "I wish for a cozy unicorn blanket!"
-      ];
-      input.value = pick(ideas);
-      speak("Here’s a surprise wish!");
+      input.value = pick(presets);
+      speak("Pick this wish or press add!");
     });
 
     $("#clearWishes")?.addEventListener("click", () => {
@@ -815,13 +788,43 @@
       STATE.wishes = [];
       saveState();
       render();
-      setSub("Wishes cleared.");
     });
 
     $("#readWishes")?.addEventListener("click", () => {
-      if (!STATE.wishes.length) return speak("No wishes yet. Type a wish and press Add!");
+      if (!STATE.wishes.length) return speak("No wishes yet. Tap a wish button!");
       speak("Your wishes are: " + STATE.wishes.slice(0,5).join(". "));
     });
+
+    function launchWishAnimation(){
+      beep("win");
+      addStars(5, "Wish launched! ⭐⭐⭐⭐⭐");
+      unlockBadge("wish_launch", "Wish Launcher", "Launched a wish!", "🚀");
+      const msg = $("#wishMsg");
+      if (msg) msg.textContent = "✨ Your wish flew to Unicorn Sky! ✨";
+      speak("Your wish flew to Unicorn Sky!");
+
+      // quick confetti-ish sparkle burst
+      for (let i=0;i<18;i++){
+        const s = document.createElement("div");
+        s.textContent = pick(["✨","⭐","💖","🌈"]);
+        s.style.position = "fixed";
+        s.style.left = (window.innerWidth*0.3 + Math.random()*window.innerWidth*0.4) + "px";
+        s.style.top = (window.innerHeight*0.35 + Math.random()*window.innerHeight*0.2) + "px";
+        s.style.fontSize = (20 + Math.random()*16) + "px";
+        s.style.zIndex = "999";
+        s.style.pointerEvents = "none";
+        document.body.appendChild(s);
+
+        const dx = (Math.random()*240 - 120);
+        const dy = -(80 + Math.random()*180);
+        s.animate([
+          { transform:`translate(0,0)`, opacity:1 },
+          { transform:`translate(${dx}px,${dy}px)`, opacity:0 }
+        ], { duration: 900 + Math.random()*400, easing:"cubic-bezier(.2,.8,.2,1)" });
+
+        setTimeout(() => s.remove(), 1400);
+      }
+    }
 
     render();
   }
@@ -833,24 +836,14 @@
   }
 
   /* =========================================================
-     Badges UI
+     Badges
      ========================================================= */
   const BADGE_CATALOG = [
     { id:"match_easy", title:"Match Winner", desc:"Won Match on Easy!", emoji:"🧠" },
     { id:"match_hard", title:"Match Master", desc:"Won Match on Hard!", emoji:"🧠" },
-    { id:"best_easy", title:"Fast Unicorn!", desc:"New best Easy time!", emoji:"⏱️" },
-    { id:"best_hard", title:"Fast Unicorn!", desc:"New best Hard time!", emoji:"⏱️" },
-
-    { id:"runner_try", title:"Try Again Star", desc:"Kept trying in Runner!", emoji:"🌈" },
-    { id:"runner_5", title:"Rainbow Runner", desc:"Collected 5 stars!", emoji:"⭐" },
-
+    { id:"runner_7", title:"Rainbow Sprinter", desc:"Collected 7 stars!", emoji:"⭐" },
     { id:"wishes3", title:"Wish Maker", desc:"Added 3 wishes!", emoji:"💖" },
-
-    { id:"mission_m_gallery", title:"Mission Star", desc:"Completed a mission!", emoji:"🎯" },
-    { id:"mission_m_match", title:"Mission Star", desc:"Completed a mission!", emoji:"🎯" },
-    { id:"mission_m_runner", title:"Mission Star", desc:"Completed a mission!", emoji:"🎯" },
-    { id:"mission_m_color", title:"Mission Star", desc:"Completed a mission!", emoji:"🎯" },
-    { id:"mission_m_wishes", title:"Mission Star", desc:"Completed a mission!", emoji:"🎯" },
+    { id:"wish_launch", title:"Wish Launcher", desc:"Launched a wish!", emoji:"🚀" },
   ];
 
   function renderBadges(){
@@ -873,7 +866,7 @@
   }
 
   /* =========================================================
-     Sparkle background canvas
+     Sparkle background
      ========================================================= */
   function setupSparkleBg(){
     const c = $("#sparkleBg");
@@ -892,8 +885,8 @@
         x: Math.random()*w, y: Math.random()*h,
         r: (Math.random()*1.6+1)*dpr,
         a: Math.random()*0.45+0.10,
-        s: (Math.random()*0.45+0.12)*dpr,
-        hue: 290 + Math.random()*60
+        s: (Math.random()*0.55+0.12)*dpr,
+        hue: 285 + Math.random()*70
       }));
     }
     window.addEventListener("resize", resize);
@@ -918,14 +911,13 @@
      Init
      ========================================================= */
   function init(){
-    // Header numbers
     $("#stars").textContent = String(STATE.stars|0);
     $("#badges").textContent = String(Object.keys(STATE.badges||{}).length);
 
     setupSparkleBg();
     setupTabs();
     setupHeaderBtns();
-    setupMissions();
+    setupHome();
 
     setupGallery();
     setupMatch();
@@ -934,7 +926,6 @@
     setupWishes();
     renderBadges();
 
-    // gentle start message
     setTimeout(() => {
       setSub("Welcome, Journey! 🦄✨");
       speak("Welcome, Journey! Pick a tab and have fun in Unicorn World!");
@@ -942,5 +933,4 @@
   }
 
   document.addEventListener("DOMContentLoaded", init);
-
 })();
