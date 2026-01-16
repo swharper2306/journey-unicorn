@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Journey’s Unicorn World 🦄✨</title>
+  <meta name="description" content="Unicorn games, rainbow fun, matching, coloring, stickers, and wishes — made for Journey!" />
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <canvas id="sparkleBg" aria-hidden="true"></canvas>
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">🦄</div>
+      <div>
+        <div class="title">Journey’s Unicorn World</div>
+        <div class="sub" id="subline">Welcome, Journey! Pick a tab ✨</div>
+      </div>
+    </div>
+
+    <div class="hud">
+      <div class="pill">⭐ Stars: <span id="stars">0</span></div>
+      <div class="pill">🏅 Badges: <span id="badges">0</span></div>
+      <button class="chip" id="soundBtn">🔊 Sound: ON</button>
+      <button class="chip" id="ttsBtn">🗣️ Read: ON</button>
+      <button class="chip danger" id="resetBtn">♻️ Reset</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="home">🏰 Home</button>
+    <button class="tab" data-tab="gallery">🖼️ Unicorn Gallery</button>
+    <button class="tab" data-tab="match">🧠 Match Game</button>
+    <button class="tab" data-tab="runner">🌈 Rainbow Runner</button>
+    <button class="tab" data-tab="color">🎨 Color Magic</button>
+    <button class="tab" data-tab="wishes">💖 Wish Jar</button>
+    <button class="tab" data-tab="trophies">🏆 Trophies</button>
+  </nav>
+
+  <main class="wrap">
+
+    <!-- HOME -->
+    <section class="panel active" id="tab-home">
+      <div class="grid2">
+        <div class="card hero">
+          <h2>Hi Journey! 🦄✨</h2>
+          <p class="big">
+            This is your very own Unicorn World. Play games, color, and make wishes!
+          </p>
+
+          <div class="miniRow">
+            <button class="btn primary" id="btnQuickMatch">🧠 Play Match</button>
+            <button class="btn" id="btnQuickColor">🎨 Color Magic</button>
+            <button class="btn" id="btnQuickWish">💖 Make a Wish</button>
+          </div>
+
+          <div class="note" id="homeTip">Tip: Win Match Game to unlock a badge!</div>
+        </div>
+
+        <div class="card">
+          <h3>Today’s Unicorn Mission</h3>
+          <div class="missionBox" id="missionBox"></div>
+          <div class="miniRow">
+            <button class="btn" id="readMission">🔈 Read mission</button>
+            <button class="btn" id="newMission">🎯 New mission</button>
+          </div>
+          <div class="note">Missions help Journey stay interested and unlock rewards 🏅</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GALLERY -->
+    <section class="panel" id="tab-gallery">
+      <div class="panelHead">
+        <h2>Unicorn Gallery</h2>
+        <div class="hint">Tap a unicorn to see it big ✨</div>
+      </div>
+
+      <div class="gallery" id="gallery"></div>
+
+      <div class="modal" id="modal" aria-hidden="true">
+        <div class="modalInner">
+          <button class="chip danger" id="closeModal">✖ Close</button>
+          <img id="modalImg" alt="Unicorn" />
+          <div class="caption" id="modalCaption"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MATCH GAME -->
+    <section class="panel" id="tab-match">
+      <div class="panelHead">
+        <h2>Match Game</h2>
+        <div class="hint">Find pairs! Easy mode is 8 cards 🧠</div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="miniRow">
+            <button class="btn primary" id="startMatchEasy">Easy (8)</button>
+            <button class="btn" id="startMatchHard">Hard (12)</button>
+            <button class="btn" id="resetMatch">♻️ Reset</button>
+            <button class="btn" id="readMatch">🔈 Read</button>
+          </div>
+
+          <div class="stats">
+            <div class="pill">✅ Matches: <span id="matchCount">0</span></div>
+            <div class="pill">👆 Flips: <span id="flipCount">0</span></div>
+            <div class="pill">⏱️ Time: <span id="matchTime">0</span>s</div>
+          </div>
+
+          <div class="note" id="matchMsg">Press Easy to start!</div>
+        </div>
+
+        <div class="card arena">
+          <div class="matchBoard" id="matchBoard"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RAINBOW RUNNER -->
+    <section class="panel" id="tab-runner">
+      <div class="panelHead">
+        <h2>Rainbow Runner</h2>
+        <div class="hint">Jump over clouds and collect stars 🌈⭐</div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="miniRow">
+            <button class="btn primary" id="runnerStart">▶ Start</button>
+            <button class="btn" id="runnerJump">⬆ Jump</button>
+            <button class="btn" id="runnerReset">♻ Reset</button>
+            <button class="btn" id="readRunner">🔈 Read</button>
+          </div>
+
+          <div class="stats">
+            <div class="pill">⭐ Collected: <span id="runnerStars">0</span></div>
+            <div class="pill">🏁 Score: <span id="runnerScore">0</span></div>
+            <div class="pill">💥 Oops: <span id="runnerOops">0</span></div>
+          </div>
+
+          <div class="note" id="runnerMsg">Press Start, then Jump!</div>
+        </div>
+
+        <div class="card arena">
+          <div class="runnerWorld" id="runnerWorld" aria-label="Runner game">
+            <div class="runnerSky"></div>
+            <div class="runnerGround"></div>
+            <div class="runnerUnicorn" id="runnerUnicorn">🦄</div>
+            <div class="runnerThing cloud" id="runnerCloud"></div>
+            <div class="runnerThing star" id="runnerStar"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLOR MAGIC -->
+    <section class="panel" id="tab-color">
+      <div class="panelHead">
+        <h2>Color Magic</h2>
+        <div class="hint">Tap colors then paint! 🎨✨</div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="miniRow">
+            <button class="btn primary" id="clearPaint">🧼 Clear</button>
+            <button class="btn" id="stampHearts">💖 Hearts</button>
+            <button class="btn" id="stampStars">⭐ Stars</button>
+            <button class="btn" id="readColor">🔈 Read</button>
+          </div>
+
+          <div class="palette" id="palette"></div>
+
+          <div class="note" id="colorMsg">Pick a color, then click/drag on the canvas.</div>
+        </div>
+
+        <div class="card arena">
+          <canvas id="paint" width="900" height="650" aria-label="Paint canvas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- WISH JAR -->
+    <section class="panel" id="tab-wishes">
+      <div class="panelHead">
+        <h2>Wish Jar</h2>
+        <div class="hint">Type a wish (or have Dad type it) 💖</div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="wishRow">
+            <input id="wishInput" type="text" maxlength="60" placeholder="My unicorn wish is…" />
+            <button class="btn primary" id="addWish">➕ Add</button>
+          </div>
+
+          <div class="miniRow">
+            <button class="btn" id="randomWish">🎲 Surprise wish</button>
+            <button class="btn" id="clearWishes">♻ Clear</button>
+            <button class="btn" id="readWishes">🔈 Read</button>
+          </div>
+
+          <div class="note" id="wishMsg">Add 3 wishes to unlock a badge!</div>
+        </div>
+
+        <div class="card jar">
+          <div class="jarTop">✨ Wish Jar ✨</div>
+          <div class="wishList" id="wishList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TROPHIES -->
+    <section class="panel" id="tab-trophies">
+      <div class="panelHead">
+        <h2>Trophies</h2>
+        <div class="hint">Badges unlock while Journey plays 🏆</div>
+      </div>
+
+      <div class="card">
+        <div class="badgeGrid" id="badgeGrid"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="foot">Made for Journey 🦄✨</footer>
+
+<script>
+  // Unicorn image set (local repo images)
+  window.UNICORN_IMAGES = [
+    { src: "./assets_journey_unicorn/images/unicorn1.jpg", caption: "Rainbow Unicorn ✨" },
+    { src: "./assets_journey_unicorn/images/unicorn2.jpg", caption: "Cute Baby Unicorn 💖" },
+    { src: "./assets_journey_unicorn/images/unicorn3.jpg", caption: "Dreamy Night Unicorn ⭐" }
+  ];
+</script>
+
+  <script src="./app.js"></script>
+</body>
+</html>
