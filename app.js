@@ -822,8 +822,10 @@
     }
 
     // stars pickups
+    // Stars were previously placed too high for the unicorn's jump arc.
+    // Keep them reachable and fun.
     const magnetOn = Date.now() < magnetUntil;
-    const starY1 = 300, starY2 = 340;
+    const starY1 = 220, starY2 = 255;
     const got1 = rectHit(uX,uYpx,uW,uH, starX,starY1,42,42) || (magnetOn && Math.abs(starX - uX) < 180);
     const got2 = rectHit(uX,uYpx,uW,uH, star2X,starY2,42,42) || (magnetOn && Math.abs(star2X - uX) < 180);
     if (got1 || got2){
@@ -857,14 +859,15 @@
     cloud.style.left = `${cloudX}px`;
     cloud.style.bottom = `120px`;
     star.style.left = `${starX}px`;
-    star.style.bottom = `300px`;
+    // Keep stars within reachable jump height.
+    star.style.bottom = `220px`;
 
     // add a second star + spike if they exist in DOM (optional)
     const star2 = $("#runnerStar2");
     const spike = $("#runnerSpike");
     if (star2){
       star2.style.left = `${star2X}px`;
-      star2.style.bottom = `340px`;
+      star2.style.bottom = `255px`;
     }
     if (spike){
       spike.style.left = `${spikeX}px`;
