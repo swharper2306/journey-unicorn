@@ -681,8 +681,8 @@
 
 const RUNNER_BASE_BOTTOM = 120;   // where the ground line is in CSS pixels
 const RUNNER_OBS_Y = 0;           // obstacles sit on the ground
-const RUNNER_STAR_Y1 = 130;       // reachable star height (from ground)
-const RUNNER_STAR_Y2 = 165;       // 2nd star height (from ground)
+const RUNNER_STAR_Y1 = 105;       // reachable star height (from ground)
+const RUNNER_STAR_Y2 = 125;       // 2nd star height (from ground)
 const RUNNER_POWER_Y = 120;       // power-up height (from ground)
 
 let runnerOn=false, runnerLoop=null;
