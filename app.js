@@ -673,220 +673,233 @@
     speak("You won! Great job Journey!");
   }
 
-  /* =========================================================
-     RAINBOW RUNNER (more elements)
-     ========================================================= */
-  let runnerOn=false, runnerLoop=null;
-  let uY=0, vy=0, jumping=false;
-  let speed=7.2;
-  let cloudX=820, spikeX=1100, starX=640, star2X=980;
-  let powerX=1500, powerType="shield", shield=0, magnetUntil=0;
-  let score=0, collected=0, oops=0;
+ /* =========================================================
+   RAINBOW RUNNER (FIXED COLLISIONS + EASIER)
+   All coordinates are "from the ground up" (bottom-based),
+   which matches how the CSS positions things with bottom:...
+   ========================================================= */
 
-  function setupRunner(){
-    $("#runnerStart")?.addEventListener("click", runnerStart);
-    $("#runnerReset")?.addEventListener("click", runnerReset);
-    $("#runnerJump")?.addEventListener("click", runnerJump);
-    $("#readRunner")?.addEventListener("click", () => speak(
-      "Rainbow Runner! Press start, then jump over clouds. Grab stars. Collect a bubble shield or star magnet power up."
-    ));
+const RUNNER_BASE_BOTTOM = 120;   // where the ground line is in CSS pixels
+const RUNNER_OBS_Y = 0;           // obstacles sit on the ground
+const RUNNER_STAR_Y1 = 130;       // reachable star height (from ground)
+const RUNNER_STAR_Y2 = 165;       // 2nd star height (from ground)
+const RUNNER_POWER_Y = 120;       // power-up height (from ground)
 
-    // make sure visuals are set even before pressing start
-    runnerReset();
+let runnerOn=false, runnerLoop=null;
+let uY=0, vy=0, jumping=false;    // uY is height above ground
+let speed=6.8;
 
-    window.addEventListener("keydown", (e) => {
-      if (e.code === "Space") runnerJump();
-    });
+let cloudX=900, spikeX=1300, starX=780, star2X=1180;
+let powerX=1600, powerType="shield", shield=0, magnetUntil=0;
+
+let score=0, collected=0, oops=0;
+
+function setupRunner(){
+  $("#runnerStart")?.addEventListener("click", runnerStart);
+  $("#runnerReset")?.addEventListener("click", runnerReset);
+  $("#runnerJump")?.addEventListener("click", runnerJump);
+  $("#readRunner")?.addEventListener("click", () => speak(
+    "Rainbow Runner! Press start, then jump over clouds. Grab stars. Collect a bubble shield or star magnet power up."
+  ));
+
+  // ensure things appear in the right place before Start
+  runnerReset();
+
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") runnerJump();
+  });
+}
+
+function runnerReset(){
+  runnerStop();
+  uY=0; vy=0; jumping=false;
+  speed=6.8;
+
+  cloudX=900; spikeX=1300; starX=780; star2X=1180;
+  powerX=1600; powerType="shield"; shield=0; magnetUntil=0;
+
+  score=0; collected=0; oops=0;
+  $("#runnerScore").textContent = "0";
+  $("#runnerStars").textContent = "0";
+  $("#runnerOops").textContent = "0";
+  $("#runnerMsg").textContent = "Press Start, then Jump!";
+  setRunnerPositions();
+}
+
+function runnerStart(){
+  beep("tap");
+  if (runnerOn) return;
+  runnerOn=true;
+  $("#runnerMsg").textContent = "Go! Jump + grab stars! 🌈⭐";
+  runnerLoop = setInterval(runnerTick, 30);
+}
+
+function runnerStop(){
+  runnerOn=false;
+  if (runnerLoop) clearInterval(runnerLoop);
+  runnerLoop=null;
+}
+
+function runnerJump(){
+  if (!runnerOn || jumping) return;
+  beep("tap");
+  vy = 12.0;
+  jumping = true;
+}
+
+function runnerTick(){
+  // physics (ground-up)
+  vy -= 0.78;
+  uY += vy;
+  if (uY <= 0){ uY=0; vy=0; jumping=false; }
+
+  // move world
+  cloudX -= speed;
+  spikeX -= speed;
+  starX  -= speed;
+  star2X -= speed;
+  powerX -= speed;
+
+  // gentle speed ramp
+  score += 0.018;
+  speed = 6.8 + Math.min(3.0, score/26);
+
+  if (cloudX < -90) cloudX = 900 + Math.random()*360;
+  if (spikeX < -90) spikeX = 1220 + Math.random()*520;
+
+  // keep stars away from obstacles so it feels fair
+  if (starX < -90)  starX  = safeStarX(900, 560);
+  if (star2X < -90) star2X = safeStarX(1100, 620);
+
+  // power-up respawn
+  if (powerX < -90){
+    powerX = 1550 + Math.random()*750;
+    powerType = Math.random() < 0.55 ? "shield" : "magnet";
   }
 
-  function runnerReset(){
-    runnerStop();
-    uY=0; vy=0; jumping=false;
-    speed=7.2;
-    cloudX=900; spikeX=1300; starX=780; star2X=1180;
-    powerX=1600; powerType = "shield"; shield=0; magnetUntil=0;
-    score=0; collected=0; oops=0;
-    $("#runnerScore").textContent = "0";
-    $("#runnerStars").textContent = "0";
-    $("#runnerOops").textContent = "0";
-    $("#runnerMsg").textContent = "Press Start, then Jump!";
-    setRunnerPositions();
-  }
+  $("#runnerScore").textContent = String(score|0);
+  setRunnerPositions();
 
-  function runnerStart(){
-    beep("tap");
-    if (runnerOn) return;
-    runnerOn=true;
-    $("#runnerMsg").textContent = "Go! Jump + grab stars! 🌈⭐";
-    runnerLoop = setInterval(runnerTick, 30);
-  }
+  // hitbox sizes (ground-up coordinates)
+  const uX = 68, uW = 48, uH = 48;
+  const uYc = uY; // unicorn height above ground (0 = on ground)
 
-  function runnerStop(){
-    runnerOn=false;
-    if (runnerLoop) clearInterval(runnerLoop);
-    runnerLoop=null;
-  }
+  // obstacle sizes
+  const cloudW=60, cloudH=44;
+  const spikeW=44, spikeH=44;
 
-  function runnerJump(){
-    if (!runnerOn || jumping) return;
-    beep("tap");
-    vy=12.5;
-    jumping=true;
-  }
+  // collide only when close to ground (so jumping clears)
+  const nearGround = uYc < 10;
 
-  function runnerTick(){
-    // physics
-    vy -= 0.8;
-    uY += vy;
-    if (uY <= 0){ uY=0; vy=0; jumping=false; }
-
-    // move things
-    cloudX -= speed;
-    spikeX -= speed;
-    starX -= speed;
-    star2X -= speed;
-    powerX -= speed;
-
-    // ramp difficulty slowly (gentler)
-    score += 0.018;
-    speed = 7.0 + Math.min(3.6, score/22);
-
-    if (cloudX < -80) cloudX = 880 + Math.random()*320;
-    if (spikeX < -80) spikeX = 1180 + Math.random()*440;
-
-    // keep stars away from obstacles so it feels fair
-    if (starX < -80) starX = safeStarX(900, 520);
-    if (star2X < -80) star2X = safeStarX(1100, 560);
-
-    // power-up (shield 🫧 or magnet 🧲)
-    if (powerX < -80){
-      powerX = 1500 + Math.random()*650;
-      powerType = Math.random() < 0.55 ? "shield" : "magnet";
-    }
-
-    $("#runnerScore").textContent = String(score|0);
-    setRunnerPositions();
-
-    // collision (cloud + spike) — shield blocks one bonk
-    const uX=68, uW=48, uH=48;
-    const uYpx = 120 + uY;
-
-    // cloud at bottom
-    if (rectHit(uX,uYpx,uW,uH, cloudX,120,60,44) && uY < 8){
-      if (shield > 0){
-        shield--;
-        beep("win");
-        $("#runnerMsg").textContent = "🫧 Shield saved you!";
-        cloudX -= 120;
-      } else {
-        oops++;
-        $("#runnerOops").textContent = String(oops);
-        $("#runnerMsg").textContent = "Oops! Jump earlier 😊";
-        beep("bad");
-        cloudX -= 80;
-      }
-    }
-
-    // spike (remixed obstacle)
-    if (rectHit(uX,uYpx,uW,uH, spikeX,120,44,44) && uY < 8){
-      if (shield > 0){
-        shield--;
-        beep("win");
-        $("#runnerMsg").textContent = "🫧 Shield saved you!";
-        spikeX -= 140;
-      } else {
-        oops++;
-        $("#runnerOops").textContent = String(oops);
-        $("#runnerMsg").textContent = "Boop! You hit a rainbow bump 🌈";
-        beep("bad");
-        spikeX -= 110;
-      }
-    }
-
-    // power-up pickup
-    const gotP = rectHit(uX,uYpx,uW,uH, powerX,RUNNER_POWER_Y,46,46);
-    if (gotP){
-      if (powerType === "shield"){
-        shield = 1;
-        $("#runnerMsg").textContent = "🫧 Bubble Shield ON! (blocks 1 hit)";
-        unlockBadge("runner_shield", "Bubble Shield", "Used a shield power‑up!", "🫧");
-      } else {
-        magnetUntil = Date.now() + 6500;
-        $("#runnerMsg").textContent = "🧲 Star Magnet ON!";
-        unlockBadge("runner_magnet", "Star Magnet", "Used a magnet power‑up!", "🧲");
-      }
+  if (nearGround && rectHit(uX,uYc,uW,uH, cloudX, RUNNER_OBS_Y, cloudW, cloudH)){
+    if (shield > 0){
+      shield--;
       beep("win");
-      addStars(3, "Power-up! ⭐⭐⭐");
-      powerX = 1500 + Math.random()*650;
-      powerType = Math.random() < 0.55 ? "shield" : "magnet";
+      $("#runnerMsg").textContent = "🫧 Shield saved you!";
+      cloudX -= 160;
+    } else {
+      oops++;
+      $("#runnerOops").textContent = String(oops);
+      $("#runnerMsg").textContent = "Oops! Jump earlier 😊";
+      beep("bad");
+      cloudX -= 120;
     }
+  }
 
-    // stars pickups
-    // Stars were previously placed too high for the unicorn's jump arc.
-    // Keep them reachable and fun.
-    const magnetOn = Date.now() < magnetUntil;
-    const starY1 = RUNNER_STAR_Y1, starY2 = RUNNER_STAR_Y2;
-    const got1 = rectHit(uX,uYpx,uW,uH, starX,starY1,42,42) || (magnetOn && Math.abs(starX - uX) < 180);
-    const got2 = rectHit(uX,uYpx,uW,uH, star2X,starY2,42,42) || (magnetOn && Math.abs(star2X - uX) < 180);
-    if (got1 || got2){
-      collected++;
-      $("#runnerStars").textContent = String(collected);
-      addStars(2, "Star collected! ⭐⭐");
+  if (nearGround && rectHit(uX,uYc,uW,uH, spikeX, RUNNER_OBS_Y, spikeW, spikeH)){
+    if (shield > 0){
+      shield--;
       beep("win");
-      if (got1) starX = safeStarX(900, 520);
-      if (got2) star2X = safeStarX(1100, 560);
-
-      if (collected >= 7){
-        unlockBadge("runner_7", "Rainbow Sprinter", "Collected 7 stars!", "⭐");
-      }
+      $("#runnerMsg").textContent = "🫧 Shield saved you!";
+      spikeX -= 180;
+    } else {
+      oops++;
+      $("#runnerOops").textContent = String(oops);
+      $("#runnerMsg").textContent = "Boop! Rainbow bump 🌈";
+      beep("bad");
+      spikeX -= 140;
     }
   }
 
-  function safeStarX(min, spread){
-    let x = min + Math.random()*spread;
-    const tooClose = (a,b,dist) => Math.abs(a-b) < dist;
-    // nudge away from obstacles
-    if (tooClose(x, cloudX, 180)) x += 220;
-    if (tooClose(x, spikeX, 180)) x += 220;
-    return x;
+  // power-up pickup
+  if (rectHit(uX,uYc,uW,uH, powerX, RUNNER_POWER_Y, 46, 46)){
+    if (powerType === "shield"){
+      shield = 1;
+      $("#runnerMsg").textContent = "🫧 Bubble Shield ON! (blocks 1 hit)";
+    } else {
+      magnetUntil = Date.now() + 6500;
+      $("#runnerMsg").textContent = "🧲 Star Magnet ON!";
+    }
+    beep("win");
+    addStars(3, "Power-up! ⭐⭐⭐");
+    powerX = 1550 + Math.random()*750;
+    powerType = Math.random() < 0.55 ? "shield" : "magnet";
   }
 
-  function setRunnerPositions(){
-    const u=$("#runnerUnicorn"), cloud=$("#runnerCloud"), star=$("#runnerStar");
-    if (!u || !cloud || !star) return;
+  // star pickup (with magnet help)
+  const magnetOn = Date.now() < magnetUntil;
 
-    u.style.transform = `translateY(${-uY}px)`;
-    cloud.style.left = `${cloudX}px`;
-    cloud.style.bottom = `120px`;
-    star.style.left = `${starX}px`;
-    // Keep stars within reachable jump height.
-    star.style.bottom = `${RUNNER_STAR_Y1}px`;
+  const got1 = rectHit(uX,uYc,uW,uH, starX,  RUNNER_STAR_Y1, 42, 42) ||
+               (magnetOn && Math.abs(starX - uX) < 180);
 
-    // add a second star + spike if they exist in DOM (optional)
-    const star2 = $("#runnerStar2");
-    const spike = $("#runnerSpike");
-    if (star2){
-      star2.style.left = `${star2X}px`;
-      star2.style.bottom = `${RUNNER_STAR_Y2}px`;
-    }
-    if (spike){
-      spike.style.left = `${spikeX}px`;
-      spike.style.bottom = `120px`;
-    }
+  const got2 = rectHit(uX,uYc,uW,uH, star2X, RUNNER_STAR_Y2, 42, 42) ||
+               (magnetOn && Math.abs(star2X - uX) < 180);
 
-    const p = $("#runnerPower");
-    if (p){
-      p.style.left = `${powerX}px`;
-      p.style.bottom = `${RUNNER_POWER_Y}px`;
-      p.textContent = (powerType === "shield") ? "🫧" : "🧲";
-      // little visual hint when active
-      p.style.opacity = 0.95;
-    }
+  if (got1 || got2){
+    collected++;
+    $("#runnerStars").textContent = String(collected);
+    addStars(2, "Star collected! ⭐⭐");
+    beep("win");
+    if (got1) starX  = safeStarX(900, 560);
+    if (got2) star2X = safeStarX(1100, 620);
+  }
+}
+
+function safeStarX(min, spread){
+  let x = min + Math.random()*spread;
+  const tooClose = (a,b,dist) => Math.abs(a-b) < dist;
+  if (tooClose(x, cloudX, 220)) x += 240;
+  if (tooClose(x, spikeX, 220)) x += 240;
+  return x;
+}
+
+function setRunnerPositions(){
+  const u=$("#runnerUnicorn"), cloud=$("#runnerCloud"), star=$("#runnerStar");
+  if (!u || !cloud || !star) return;
+
+  // unicorn is positioned by bottom baseline + jump height
+  u.style.bottom = `${RUNNER_BASE_BOTTOM + uY}px`;
+
+  cloud.style.left = `${cloudX}px`;
+  cloud.style.bottom = `${RUNNER_BASE_BOTTOM + RUNNER_OBS_Y}px`;
+
+  star.style.left = `${starX}px`;
+  star.style.bottom = `${RUNNER_BASE_BOTTOM + RUNNER_STAR_Y1}px`;
+
+  const star2 = $("#runnerStar2");
+  if (star2){
+    star2.style.left = `${star2X}px`;
+    star2.style.bottom = `${RUNNER_BASE_BOTTOM + RUNNER_STAR_Y2}px`;
   }
 
-  function rectHit(ax,ay,aw,ah, bx,by,bw,bh){
-    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+  const spike = $("#runnerSpike");
+  if (spike){
+    spike.style.left = `${spikeX}px`;
+    spike.style.bottom = `${RUNNER_BASE_BOTTOM + RUNNER_OBS_Y}px`;
   }
+
+  const p = $("#runnerPower");
+  if (p){
+    p.style.left = `${powerX}px`;
+    p.style.bottom = `${RUNNER_BASE_BOTTOM + RUNNER_POWER_Y}px`;
+    p.textContent = (powerType === "shield") ? "🫧" : "🧲";
+    p.style.opacity = 0.95;
+  }
+}
+
+function rectHit(ax,ay,aw,ah, bx,by,bw,bh){
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
 
   /* =========================================================
      COLOR MAGIC (FIXED)
